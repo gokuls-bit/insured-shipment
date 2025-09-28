@@ -19,7 +19,7 @@ class MemoryStore {
       callback(null, hits + 1, resetTime);
     } else {
       this.hits.set(key, 1);
-      const newResetTime = now + (15 * 60 * 1000); // 15 minutes from now
+      const newResetTime = now + (15 * 60 * 1000); // 15 minutes
       this.resetTime.set(key, newResetTime);
       callback(null, 1, newResetTime);
     }
@@ -46,18 +46,16 @@ class MemoryStore {
 // Create store instance
 const store = new MemoryStore();
 
-// Custom key generator that includes user identification
+// Custom key generator
 const generateKey = (req) => {
   const ip = req.ip || req.connection.remoteAddress;
   const userId = req.admin?.id || 'anonymous';
   const userAgent = req.get('User-Agent') || 'unknown';
-  
-  // Create a more specific key for authenticated users
+
   if (req.admin) {
     return `${userId}-${ip}`;
   }
-  
-  // For anonymous users, use IP + partial user agent
+
   const shortAgent = userAgent.substring(0, 50);
   return `${ip}-${Buffer.from(shortAgent).toString('base64').substring(0, 10)}`;
 };
@@ -65,7 +63,7 @@ const generateKey = (req) => {
 // Custom handler for rate limit exceeded
 const rateLimitHandler = (req, res) => {
   const key = generateKey(req);
-  
+
   logger.warn('Rate limit exceeded', {
     key,
     ip: req.ip,
@@ -79,83 +77,95 @@ const rateLimitHandler = (req, res) => {
     success: false,
     message: 'Too many requests from this client. Please try again later.',
     code: 'RATE_LIMIT_EXCEEDED',
-    retryAfter: 900, // 15 minutes
+    retryAfter: 900,
     limit: req.rateLimit?.limit || 'unknown',
     remaining: 0,
     reset: new Date(Date.now() + 15 * 60 * 1000).toISOString()
   });
 };
 
-// General API rate limiting (more permissive)
+// Login-specific response helper so handler and message can reuse the same behavior
+const loginRateLimitResponse = (req, res) => {
+  logger.security('Login rate limit exceeded', {
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    url: req.originalUrl,
+    body: { username: req.body?.username }
+  });
+
+  res.status(429).json({
+    success: false,
+    message: 'Too many login attempts. Please try again later.',
+    code: 'LOGIN_RATE_LIMIT_EXCEEDED',
+    retryAfter: 900,
+    lockoutTime: '15 minutes'
+  });
+};
+
+// General API limiter
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: (req) => {
-    // Higher limits for authenticated admin users
     if (req.admin) {
       return req.admin.role === 'super_admin' ? 500 : 300;
     }
-    // Lower limit for anonymous users
     return 100;
-  },
-  message: rateLimitHandler,
-  standardHeaders: true, // Return rate limit info in headers
-  legacyHeaders: false,
-  keyGenerator: generateKey,
-  store: store,
-  skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.url === '/api/health';
-  },
-  onLimitReached: (req, res, options) => {
-    logger.warn('Rate limit reached', {
-      key: generateKey(req),
-      ip: req.ip,
-      url: req.originalUrl,
-      limit: options.max,
-      windowMs: options.windowMs
-    });
-  }
-});
-
-// Payment API rate limiting (more restrictive)
-const paymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: (req) => {
-    // Very low limit for payment operations
-    if (req.admin) {
-      return 50; // Admins can make more payment-related requests
-    }
-    return 10; // Regular users limited to 10 payment requests
   },
   message: rateLimitHandler,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: generateKey,
   store: store,
-  skipSuccessfulRequests: false, // Count all requests, not just failed ones
+  skip: (req) => req.url === '/api/health',
+  handler: (req, res, next, options) => {
+    logger.warn('Rate limit reached', {
+      key: generateKey(req),
+      ip: req.ip,
+      url: req.originalUrl,
+      limit: options?.max,
+      windowMs: options?.windowMs
+    });
+
+    // reuse configured response handler
+    return rateLimitHandler(req, res);
+  }
+});
+
+// Payment API limiter
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: (req) => (req.admin ? 50 : 10),
+  message: rateLimitHandler,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: generateKey,
+  store: store,
+  skipSuccessfulRequests: false,
   skipFailedRequests: false,
-  onLimitReached: (req, res, options) => {
+  handler: (req, res, next, options) => {
     logger.error('Payment rate limit reached', {
       key: generateKey(req),
       ip: req.ip,
       url: req.originalUrl,
       method: req.method,
-      limit: options.max,
+      limit: options?.max,
       admin: req.admin ? req.admin.username : null
     });
+
+    return rateLimitHandler(req, res);
   }
 });
 
-// Admin login rate limiting (very restrictive)
+// Login limiter
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login attempts per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: (req, res) => {
     logger.security('Login rate limit exceeded', {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       url: req.originalUrl,
-      body: { username: req.body?.username } // Log username attempt
+      body: { username: req.body?.username }
     });
 
     res.status(429).json({
@@ -169,33 +179,37 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    // Use IP + attempted username for login rate limiting
     const ip = req.ip;
     const username = req.body?.username || 'unknown';
     return `login-${ip}-${username}`;
   },
   store: store,
-  skipSuccessfulRequests: true, // Don't count successful logins against the limit
+  skipSuccessfulRequests: true,
   skipFailedRequests: false,
-  onLimitReached: (req, res, options) => {
-    logger.security('Login rate limit reached - potential brute force attack', {
+  // When login attempts exceed the limit, log a security warning then send the
+  // same response defined in `loginRateLimitResponse`.
+  handler: (req, res, next, options) => {
+    logger.security('Login rate limit reached - potential brute force', {
       ip: req.ip,
       username: req.body?.username,
       userAgent: req.get('User-Agent'),
-      limit: options.max,
-      windowMs: options.windowMs
+      limit: options?.max,
+      windowMs: options?.windowMs
     });
-  }
+
+    return loginRateLimitResponse(req, res);
+  },
+  message: loginRateLimitResponse,
 });
 
-// Company submission rate limiting
+// Company submission limiter
 const companySubmissionLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Max 3 company submissions per hour
+  windowMs: 60 * 60 * 1000,
+  max: 3,
   message: (req, res) => {
     res.status(429).json({
       success: false,
-      message: 'Too many company submissions. You can submit maximum 3 companies per hour.',
+      message: 'Too many company submissions. Max 3 per hour allowed.',
       code: 'SUBMISSION_RATE_LIMIT',
       retryAfter: 3600,
       limit: 3,
@@ -203,17 +217,16 @@ const companySubmissionLimiter = rateLimit({
     });
   },
   keyGenerator: (req) => {
-    // Rate limit by email address for company submissions
     const email = req.body?.submitterInfo?.email || req.ip;
     return `company-submission-${email}`;
   },
   store: store
 });
 
-// Webhook rate limiting (for external services)
+// Webhook limiter
 const webhookLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // Allow many webhook calls
+  windowMs: 1 * 60 * 1000,
+  max: 100,
   message: (req, res) => {
     res.status(429).json({
       success: false,
@@ -221,32 +234,23 @@ const webhookLimiter = rateLimit({
       code: 'WEBHOOK_RATE_LIMIT'
     });
   },
-  keyGenerator: (req) => {
-    // Rate limit webhooks by origin IP
-    return `webhook-${req.ip}`;
-  },
+  keyGenerator: (req) => `webhook-${req.ip}`,
   store: store,
-  skip: (req) => {
-    // Skip rate limiting if proper webhook signature is present
-    return req.headers['x-razorpay-signature'] ? false : true;
-  }
+  skip: (req) => !req.headers['x-razorpay-signature']
 });
 
-// Analytics/reporting rate limiting
+// Analytics limiter
 const analyticsLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-// Analytics/reporting rate limiting
-const analyticsLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 5 * 60 * 1000,
   max: (req) => {
     if (req.admin?.role === 'super_admin') return 100;
     if (req.admin) return 50;
-    return 10; // Anonymous users get very limited analytics access
+    return 10;
   },
   message: (req, res) => {
     res.status(429).json({
       success: false,
-      message: 'Analytics request limit exceeded. Please wait before making more requests.',
+      message: 'Analytics request limit exceeded. Please wait before retrying.',
       code: 'ANALYTICS_RATE_LIMIT'
     });
   },
@@ -254,14 +258,14 @@ const analyticsLimiter = rateLimit({
   store: store
 });
 
-// File upload rate limiting
+// Upload limiter
 const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Max 20 file uploads per 15 minutes
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: (req, res) => {
     res.status(429).json({
       success: false,
-      message: 'File upload limit exceeded. Please wait before uploading more files.',
+      message: 'File upload limit exceeded. Please wait before uploading again.',
       code: 'UPLOAD_RATE_LIMIT'
     });
   },
@@ -269,7 +273,7 @@ const uploadLimiter = rateLimit({
   store: store
 });
 
-// Create a dynamic rate limiter factory
+// Custom limiter factory
 const createCustomLimiter = (options) => {
   const {
     windowMs = 15 * 60 * 1000,
@@ -300,21 +304,20 @@ const createCustomLimiter = (options) => {
   });
 };
 
-// Middleware to reset rate limit for specific user (useful for admin operations)
+// Reset and check helpers
 const resetRateLimit = (key) => {
   store.resetKey(key);
 };
 
-// Middleware to check rate limit status without incrementing
 const checkRateLimit = (limiterConfig) => {
   return (req, res, next) => {
     const key = generateKey(req);
-    // This is a simplified check - in production, you'd want more sophisticated logic
+    // TODO: implement inspection without incrementing
     next();
   };
 };
 
-// Export all limiters and utilities
+// Export
 module.exports = {
   generalLimiter,
   paymentLimiter,
@@ -328,4 +331,5 @@ module.exports = {
   checkRateLimit,
   generateKey,
   store
-}
+};
+Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5000/api/health' | Select-Object -ExpandProperty ContentInvoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5000/api/health' | Select-Object -ExpandProperty Content
