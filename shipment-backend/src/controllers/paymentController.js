@@ -1,16 +1,493 @@
 // src/controllers/paymentController.js
-const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Company = require('../models/Company');
 const PaymentLog = require('../models/PaymentLog');
 const { validationResult } = require('express-validator');
 const logger = require('../utils/logger');
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || 'your_razorpay_key_id',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || 'your_razorpay_key_secret'
-});
+// Mock Payment Gateway - No actual payment processing
+const MOCK_PAYMENT_ENABLED = process.env.MOCK_PAYMENTS === 'true' || true; // Always enabled for demo
+
+// Create mock payment order
+const createPaymentOrder = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { companyId, amount, currency = 'INR' } = req.body;
+    const finalAmount = amount || 1500000; // Default ₹15,000 in paisa
+
+    // Verify company exists and is eligible for payment
+    const company = await Company.findById(companyId);
+    if (!company) {
+      return res.status(404).json({
+        success: false,
+        message: 'Company not found'
+      });
+    }
+
+    // Check if payment already completed
+    if (company.paymentStatus === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment already completed for this company',
+        currentStatus: company.paymentStatus
+      });
+    }
+
+    // Check if there's already a pending payment order
+    const existingPayment = await PaymentLog.findOne({
+      companyId,
+      status: { $in: ['created', 'attempted'] }
+    });
+
+    if (existingPayment) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment order already exists for this company',
+        existingOrderId: existingPayment.gatewayOrderId,
+        paymentId: existingPayment.paymentId
+      });
+    }
+
+    // Create unique receipt and order IDs
+    const receiptId = `mock_receipt_${companyId}_${Date.now()}`;
+    const orderId = `mock_order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const paymentId = `mock_pay_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+    // Create mock order (simulating payment gateway response)
+    const mockOrder = {
+      id: orderId,
+      amount: finalAmount,
+      currency: currency.toUpperCase(),
+      receipt: receiptId,
+      status: 'created',
+      created_at: Math.floor(Date.now() / 1000),
+      notes: {
+        companyId: companyId.toString(),
+        companyName: company.name,
+        submitterEmail: company.submittedBy.email,
+        purpose: 'Company listing fee'
+      }
+    };
+
+    // Create payment log entry
+    const paymentLogData = {
+      companyId,
+      paymentId: paymentId,
+      gatewayOrderId: orderId,
+      amount: finalAmount,
+      currency: currency.toUpperCase(),
+      status: 'created',
+      paymentMethod: 'mock',
+      customerInfo: {
+        email: company.submittedBy.email,
+        phone: company.submittedBy.phone,
+        name: company.submittedBy.name
+      },
+      metadata: {
+        companyName: company.name,
+        receiptId,
+        createdVia: 'mock_payment_gateway',
+        mockPayment: true
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    };
+
+    const paymentLog = new PaymentLog(paymentLogData);
+    await paymentLog.save();
+
+    // Update company with payment order ID
+    company.paymentId = orderId;
+    company.paymentStatus = 'processing';
+    await company.save();
+
+    logger.info('Mock payment order created', {
+      companyId,
+      companyName: company.name,
+      orderId: orderId,
+      paymentId: paymentId,
+      amount: finalAmount,
+      currency
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Mock payment order created successfully',
+      mock: true,
+      data: {
+        orderId: orderId,
+        paymentId: paymentId,
+        amount: mockOrder.amount,
+        currency: mockOrder.currency,
+        companyName: company.name,
+        companyId,
+        mockGatewayKey: 'mock_key_demo', // Mock key for frontend
+        customerInfo: {
+          email: company.submittedBy.email,
+          phone: company.submittedBy.phone,
+          name: company.submittedBy.name
+        },
+        notes: mockOrder.notes,
+        receipt: mockOrder.receipt,
+        createdAt: mockOrder.created_at,
+        instructions: 'This is a mock payment. Click "Complete Payment" to simulate successful payment.'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Mock payment order creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating payment order',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+// Verify mock payment (auto-success for demo)
+const verifyPayment = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const { 
+      paymentId, 
+      orderId, 
+      signature = 'mock_signature',
+      paymentMethod = 'mock',
+      additionalData = {}
+    } = req.body;
+
+    // Mock signature verification (always passes)
+    const mockSignature = crypto
+      .createHmac('sha256', 'mock_secret_key')
+      .update(`${orderId}|${paymentId}`)
+      .digest('hex');
+
+    logger.info('Mock payment verification', {
+      orderId,
+      paymentId,
+      providedSignature: signature,
+      mockSignature
+    });
+
+    // Find and update payment log
+    const paymentLog = await PaymentLog.findOneAndUpdate(
+      { gatewayOrderId: orderId },
+      { 
+        status: 'paid',
+        paidAt: new Date(),
+        paymentMethod: paymentMethod,
+        gatewayResponse: {
+          paymentId,
+          signature,
+          mockVerification: true,
+          verifiedAt: new Date(),
+          additionalData
+        },
+        webhookReceived: true,
+        webhookReceivedAt: new Date()
+      },
+      { new: true }
+    ).populate('companyId');
+
+    if (!paymentLog) {
+      logger.error('Payment log not found for order:', orderId);
+      return res.status(404).json({
+        success: false,
+        message: 'Payment record not found'
+      });
+    }
+
+    // Update company payment status
+    const company = await Company.findByIdAndUpdate(
+      paymentLog.companyId._id,
+      { 
+        paymentStatus: 'completed',
+        paymentAmount: paymentLog.amount
+      },
+      { new: true }
+    );
+
+    if (!company) {
+      logger.error('Company not found for payment:', paymentLog.companyId._id);
+      return res.status(404).json({
+        success: false,
+        message: 'Company not found'
+      });
+    }
+
+    logger.info('Mock payment verified successfully', {
+      companyId: company._id,
+      companyName: company.name,
+      paymentId,
+      orderId,
+      amount: paymentLog.amount,
+      paymentMethod: paymentLog.paymentMethod
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully (Mock)',
+      mock: true,
+      data: {
+        paymentId: paymentId,
+        orderId: orderId,
+        companyId: company._id,
+        companyName: company.name,
+        amount: paymentLog.amount,
+        currency: paymentLog.currency,
+        paymentMethod: paymentLog.paymentMethod,
+        paidAt: paymentLog.paidAt,
+        status: 'paid'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Mock payment verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying payment',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+// Get payment status
+const getPaymentStatus = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const paymentLog = await PaymentLog.findOne({ 
+      $or: [
+        { paymentId },
+        { gatewayOrderId: paymentId }
+      ]
+    }).populate('companyId', 'name status paymentStatus');
+
+    if (!paymentLog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      mock: paymentLog.metadata?.mockPayment || false,
+      data: {
+        paymentId: paymentLog.paymentId,
+        orderId: paymentLog.gatewayOrderId,
+        status: paymentLog.status,
+        amount: paymentLog.amount,
+        currency: paymentLog.currency,
+        paymentMethod: paymentLog.paymentMethod,
+        paidAt: paymentLog.paidAt,
+        failureReason: paymentLog.failureReason,
+        company: paymentLog.companyId,
+        createdAt: paymentLog.createdAt,
+        formattedAmount: paymentLog.formattedAmount
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in getPaymentStatus:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching payment status',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+// Handle mock webhooks (optional)
+const handleWebhook = async (req, res) => {
+  try {
+    logger.info('Mock webhook received', {
+      body: req.body,
+      headers: req.headers
+    });
+
+    // Simply acknowledge the webhook
+    res.status(200).json({ 
+      success: true, 
+      message: 'Mock webhook received',
+      mock: true 
+    });
+
+  } catch (error) {
+    logger.error('Mock webhook handling error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error processing webhook'
+    });
+  }
+};
+
+// Get payment analytics
+const getPaymentAnalytics = async (req, res) => {
+  try {
+    const { 
+      startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      endDate = new Date(),
+      groupBy = 'day'
+    } = req.query;
+
+    const matchStage = {
+      createdAt: {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      }
+    };
+
+    // Revenue analytics
+    const revenueData = await PaymentLog.getRevenueByPeriod(
+      new Date(startDate),
+      new Date(endDate)
+    );
+
+    // Payment method breakdown
+    const paymentMethodStats = await PaymentLog.aggregate([
+      { $match: { ...matchStage, status: 'paid' } },
+      {
+        $group: {
+          _id: '$paymentMethod',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$amount' }
+        }
+      }
+    ]);
+
+    // Status breakdown
+    const statusStats = await PaymentLog.getPaymentStats();
+
+    // Failure analysis
+    const failureReasons = await PaymentLog.aggregate([
+      { $match: { ...matchStage, status: 'failed' } },
+      {
+        $group: {
+          _id: '$failureReason',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      mock: true,
+      data: {
+        revenueData,
+        paymentMethodStats,
+        statusStats,
+        failureReasons,
+        dateRange: {
+          startDate,
+          endDate
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in getPaymentAnalytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching payment analytics',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+// Initiate mock refund
+const initiateRefund = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { amount, reason } = req.body;
+
+    const paymentLog = await PaymentLog.findOne({ paymentId });
+    
+    if (!paymentLog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment not found'
+      });
+    }
+
+    if (paymentLog.status !== 'paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only paid payments can be refunded'
+      });
+    }
+
+    const refundAmount = amount || paymentLog.amount;
+    
+    if (refundAmount > paymentLog.amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund amount cannot exceed payment amount'
+      });
+    }
+
+    // Create mock refund
+    const mockRefundId = `mock_rfnd_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+    // Update payment log
+    await paymentLog.markAsRefunded(mockRefundId);
+    await paymentLog.initiateRefund(refundAmount, reason);
+
+    logger.info('Mock refund initiated', {
+      paymentId,
+      refundId: mockRefundId,
+      amount: refundAmount,
+      reason
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Refund initiated successfully (Mock)',
+      mock: true,
+      data: {
+        refundId: mockRefundId,
+        paymentId,
+        amount: refundAmount,
+        status: 'processed'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error initiating mock refund:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error initiating refund',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
+module.exports = {
+  createPaymentOrder,
+  verifyPayment,
+  getPaymentStatus,
+  handleWebhook,
+  getPaymentAnalytics,
+  initiateRefund
+};
 
 // Create payment order
 const createPaymentOrder = async (req, res) => {

@@ -7,9 +7,11 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Import models
-const Admin = require('../src/models/Admin');
-const Company = require('../src/models/Company');
-const PaymentLog = require('../src/models/PaymentLog');
+// Import models
+// Import models
+const Admin = require('../models/Admin');
+const Company = require('../models/Company');
+const PaymentLog = require('../models/PaymentLog');
 
 // Connect to database
 const connectDB = async () => {
@@ -28,10 +30,10 @@ const connectDB = async () => {
 // Sample admin data
 const adminData = [
   {
-    username: 'admin',
-    email: 'admin@surakshitsafar.com',
-    password: 'AdminPass123!',
-    firstName: 'System',
+    username: 'gokul',
+    email: 'gokul@surakshitsafar.com',
+    password: 'santji',
+    firstName: 'Gokul',
     lastName: 'Administrator',
     role: 'super_admin',
     isActive: true,
@@ -49,17 +51,17 @@ const adminData = [
   }
 ];
 
-// Sample company data
+// Sample company data (FIXED)
 const companyData = [
   {
     name: "Global Marine Insurance Co.",
     email: "contact@globalmarineins.com",
     website: "https://globalmarineins.com",
-    contact: "+65-6234-5678",
+    contact: "+6562345678",   // FIXED
     routes: ["Singapore-Mumbai", "Singapore-Chennai", "Singapore-Dubai"],
     cargoTypes: ["Electronics", "Machinery", "Automotive"],
     shipmentTypes: ["Ship", "Air"],
-    coverage: "International",
+    coverage: "Global",   // FIXED
     maxCoverage: { amount: 5000000, currency: "USD" },
     established: 2005,
     rating: 4.8,
@@ -70,7 +72,7 @@ const companyData = [
     submittedBy: {
       name: "John Lim",
       email: "john.lim@globalmarineins.com",
-      phone: "+65-6234-5678",
+      phone: "+6562345678",   // FIXED
       designation: "Business Development Manager"
     },
     description: "Leading marine insurance provider in Southeast Asia with comprehensive coverage for international shipments.",
@@ -80,11 +82,11 @@ const companyData = [
     name: "EuroTrans Cargo Shield",
     email: "info@eurotrans-cargo.de",
     website: "https://eurotrans-cargo.de",
-    contact: "+49-30-1234-5678",
+    contact: "+493012345678",   // FIXED
     routes: ["Hamburg-Mumbai", "Rotterdam-Chennai", "Frankfurt-Delhi"],
     cargoTypes: ["Electronics", "Pharmaceuticals", "Textiles"],
     shipmentTypes: ["Road", "Rail", "Air"],
-    coverage: "Europe-Asia",
+    coverage: "Global",   // FIXED
     maxCoverage: { amount: 8000000, currency: "EUR" },
     established: 1995,
     rating: 4.7,
@@ -95,7 +97,7 @@ const companyData = [
     submittedBy: {
       name: "Klaus Mueller",
       email: "k.mueller@eurotrans-cargo.de",
-      phone: "+49-30-1234-5678",
+      phone: "+493012345678",   // FIXED
       designation: "Regional Director"
     },
     description: "Premier European cargo insurance specialist with extensive experience in Euro-Asian trade routes.",
@@ -105,11 +107,11 @@ const companyData = [
     name: "Pacific Freight Insurance",
     email: "admin@pacificfreight.au",
     website: "https://pacificfreight.au",
-    contact: "+61-2-9876-5432",
+    contact: "+61298765432",   // FIXED
     routes: ["Sydney-Tokyo", "Melbourne-Seoul", "Brisbane-Shanghai"],
     cargoTypes: ["Mining Equipment", "Agricultural Products", "Electronics"],
     shipmentTypes: ["Ship", "Air"],
-    coverage: "Pacific Region",
+    coverage: "Asia",   // FIXED (instead of Pacific Region)
     maxCoverage: { amount: 6000000, currency: "AUD" },
     established: 2008,
     rating: 4.5,
@@ -120,7 +122,7 @@ const companyData = [
     submittedBy: {
       name: "Sarah Wilson",
       email: "s.wilson@pacificfreight.au",
-      phone: "+61-2-9876-5432",
+      phone: "+61298765432",   // FIXED
       designation: "Operations Manager"
     },
     description: "Australia's trusted partner for Pacific Rim cargo insurance with specialized mining equipment coverage.",
@@ -130,11 +132,11 @@ const companyData = [
     name: "TransAtlantic Cargo Care",
     email: "contact@transatlantic.com",
     website: "https://transatlantic.com",
-    contact: "+1-555-0199",
+    contact: "+15550199100",   // FIXED (made 11 digits to meet minLength)
     routes: ["New York-London", "Los Angeles-Hamburg", "Miami-Barcelona"],
     cargoTypes: ["Oil & Gas", "Automotive", "Consumer Goods"],
     shipmentTypes: ["Ship", "Air", "Road"],
-    coverage: "Global",
+    coverage: "Global",   // already valid
     maxCoverage: { amount: 10000000, currency: "USD" },
     established: 2001,
     rating: 4.6,
@@ -145,7 +147,7 @@ const companyData = [
     submittedBy: {
       name: "Robert Johnson",
       email: "r.johnson@transatlantic.com",
-      phone: "+1-555-0199",
+      phone: "+15550199100",   // FIXED (made 11 digits to meet minLength)
       designation: "VP Business Development"
     },
     description: "Global leader in transatlantic cargo insurance with specialized oil & gas coverage.",
@@ -155,11 +157,11 @@ const companyData = [
     name: "Silk Road Insurance Group",
     email: "service@silkroadins.com",
     website: "https://silkroadins.com",
-    contact: "+86-21-6234-5678",
+    contact: "+862162345678",   // FIXED
     routes: ["Shanghai-Hamburg", "Beijing-London", "Guangzhou-Rotterdam"],
     cargoTypes: ["Electronics", "Textiles", "Machinery", "Consumer Goods"],
     shipmentTypes: ["Rail", "Road", "Ship"],
-    coverage: "China-Europe",
+    coverage: "Asia",   // FIXED (instead of China-Europe)
     maxCoverage: { amount: 7000000, currency: "USD" },
     established: 2010,
     rating: 4.4,
@@ -170,13 +172,14 @@ const companyData = [
     submittedBy: {
       name: "Li Wei",
       email: "l.wei@silkroadins.com",
-      phone: "+86-21-6234-5678",
+      phone: "+862162345678",   // FIXED
       designation: "International Business Director"
     },
     description: "Specialized in Belt and Road Initiative cargo insurance with extensive rail network coverage.",
     licenseNumber: "CN-SILK-2010-234"
   }
 ];
+
 
 // Seed functions
 const seedAdmins = async () => {
@@ -202,8 +205,28 @@ const seedCompanies = async () => {
     console.log('Existing company data cleared');
     
     const admin = await Admin.findOne({ role: 'super_admin' });
+
+    // Helper: normalize phone numbers to match schema regex (optional leading +, digits only)
+    const normalizePhone = (phone) => {
+      if (!phone) return phone;
+      // Preserve leading + if present, then strip all non-digit characters
+      const hasPlus = phone.trim().startsWith('+');
+      const digits = phone.replace(/[^0-9]/g, '');
+      return hasPlus ? `+${digits}` : digits;
+    };
+
+    // Allowed coverage values in Company schema
+    const allowedCoverages = ['Local', 'Regional', 'National', 'International', 'Global'];
     
     for (const company of companyData) {
+      // sanitize phone fields
+      if (company.contact) company.contact = normalizePhone(String(company.contact));
+      if (company.submittedBy && company.submittedBy.phone) company.submittedBy.phone = normalizePhone(String(company.submittedBy.phone));
+
+      // Ensure coverage is one of the allowed enum values; default to 'International' when uncertain
+      if (!allowedCoverages.includes(company.coverage)) {
+        company.coverage = 'International';
+      }
       if (company.status === 'approved') {
         company.approvedBy = admin._id;
         company.approvedAt = new Date();
@@ -239,7 +262,7 @@ const seedPaymentLogs = async () => {
         paidAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
         customerInfo: {
           email: company.submittedBy.email,
-          phone: company.submittedBy.phone,
+          phone: (company.submittedBy && company.submittedBy.phone) ? company.submittedBy.phone : undefined,
           name: company.submittedBy.name
         },
         settled: true,
