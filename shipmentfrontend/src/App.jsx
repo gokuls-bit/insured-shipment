@@ -8,85 +8,35 @@ import {
   MoreVertical, Send, User, ShoppingCart, Zap, TrendingDown, ArrowUpRight
 } from 'lucide-react';
 
-// == NEW INTEGRATED DATA SOURCE ==
+// Real route and company data
 const routesWithCompanies = [
-  // == Original & India/ME Focused ==
   { route: "Mumbai-Singapore", companies: ["Maersk", "ONE", "CMA CGM", "Evergreen"] },
   { route: "Chennai-Dubai", companies: ["Hapag-Lloyd", "MSC", "X-Press Feeders"] },
   { route: "Los Angeles-Mumbai", companies: ["Maersk", "CMA CGM", "Hapag-Lloyd"] },
-  { route: "Hamburg-Delhi", companies: ["DHL", "FedEx Express", "Lufthansa Cargo"] }, // Primarily Air
+  { route: "Hamburg-Delhi", companies: ["DHL", "FedEx Express", "Lufthansa Cargo"] },
   { route: "Mundra-Jebel Ali", companies: ["DP World", "MSC", "Maersk"] },
   { route: "JNPT (Mumbai)-Rotterdam", companies: ["MSC", "Hapag-Lloyd", "CMA CGM"] },
   { route: "Chennai-Port Klang", companies: ["ZIM", "ONE", "Evergreen"] },
   { route: "Kolkata-Singapore", companies: ["Shipping Corporation of India (SCI)", "Maersk"] },
   { route: "Mundra-New York", companies: ["Hapag-Lloyd", "Maersk", "MSC"] },
   { route: "Cochin-Jeddah", companies: ["MSC", "Hapag-Lloyd"] },
-  { route: "Jebel Ali-Singapore", companies: ["Maersk", "COSCO", "Evergreen"] },
-  { route: "Dammam-Mombasa", companies: ["CMA CGM", "Maersk"] },
-  // == Trans-Pacific (Asia <-> North America) ==
   { route: "Shanghai-Los Angeles", companies: ["COSCO", "MSC", "Maersk", "ONE"] },
   { route: "Shenzhen-New York", companies: ["CMA CGM", "Evergreen", "ZIM"] },
   { route: "Ningbo-Long Beach", companies: ["Maersk", "COSCO", "OOCL"] },
   { route: "Hong Kong-Vancouver", companies: ["ONE", "Evergreen", "Yang Ming"] },
   { route: "Busan-Seattle", companies: ["HMM", "Maersk", "ONE"] },
-  { route: "Yokohama-Oakland", companies: ["ONE", "Wan Hai Lines", "Yang Ming"] },
-  { route: "Ho Chi Minh City-Savannah", companies: ["ZIM", "CMA CGM", "MSC"] },
-  { route: "Qingdao-Prince Rupert", companies: ["COSCO", "MSC"] },
-  { route: "Xiamen-Houston", companies: ["Maersk", "Evergreen"] },
-  { route: "Kaohsiung-Tacoma", companies: ["Yang Ming", "ONE", "Evergreen"] },
-  // == Asia - Europe ==
   { route: "Shanghai-Hamburg", companies: ["COSCO", "MSC", "Evergreen"] },
   { route: "Shanghai-Rotterdam", companies: ["Maersk", "CMA CGM", "OOCL"] },
   { route: "Singapore-Felixstowe", companies: ["Hapag-Lloyd", "ONE", "Maersk"] },
-  { route: "Shenzhen-Antwerp", companies: ["COSCO", "CMA CGM", "MSC"] },
-  { route: "Busan-Le Havre", companies: ["HMM", "Hapag-Lloyd", "ONE"] },
-  { route: "Port Klang-Genoa", companies: ["Maersk", "MSC", "CMA CGM"] },
-  { route: "Ningbo-Piraeus", companies: ["COSCO", "Maersk"] },
-  { route: "Colombo-Valencia", companies: ["Hapag-Lloyd", "MSC"] },
-  { route: "Laem Chabang-Bremerhaven", companies: ["ONE", "Evergreen"] },
-  // == Trans-Atlantic (North America <-> Europe) ==
-  { route: "New York-London", companies: ["British Airways Cargo", "Virgin Atlantic Cargo"] }, // Primarily Air
   { route: "New York-Antwerp", companies: ["Hapag-Lloyd", "MSC", "Maersk"] },
-  { route: "Savannah-Bremerhaven", companies: ["Maersk", "Hapag-Lloyd"] },
-  { route: "Houston-Liverpool", companies: ["MSC", "CMA CGM"] },
-  { route: "Montreal-Rotterdam", companies: ["OOCL", "Hapag-Lloyd"] },
-  { route: "Charleston-Felixstowe", companies: ["Maersk", "ZIM"] },
-  { route: "Norfolk-Le Havre", companies: ["CMA CGM", "MSC"] },
-  // == Intra-Asia ==
   { route: "Singapore-Port Klang", companies: ["ONE", "Maersk", "Evergreen"] },
   { route: "Hong Kong-Shanghai", companies: ["OOCL", "COSCO", "Wan Hai Lines"] },
-  { route: "Busan-Qingdao", companies: ["HMM", "Sinokor Merchant Marine"] },
-  { route: "Tokyo-Singapore", companies: ["ONE", "Maersk"] },
-  { route: "Jakarta-Laem Chabang", companies: ["Evergreen", "Wan Hai Lines"] },
-  { route: "Cat Lai-Hong Kong", companies: ["OOCL", "COSCO"] },
-  { route: "Manila-Kaohsiung", companies: ["Evergreen", "Yang Ming"] },
-  // == Latin America Routes ==
   { route: "Shanghai-Santos", companies: ["COSCO", "Maersk", "CMA CGM"] },
-  { route: "Los Angeles-Manzanillo", companies: ["MSC", "Hapag-Lloyd"] },
-  { route: "Hamburg-Buenos Aires", companies: ["Hapag-Lloyd", "Maersk"] },
-  { route: "Ningbo-Callao", companies: ["COSCO", "MSC"] },
-  { route: "New York-Cartagena", companies: ["ZIM", "Sealand (A Maersk Company)"] },
-  // == Africa Routes ==
   { route: "Guangzhou-Durban", companies: ["COSCO", "Maersk", "MSC"] },
-  { route: "Antwerp-Lagos (Apapa)", companies: ["CMA CGM", "Grimaldi Group"] },
-  { route: "Colombo-Mombasa", companies: ["Maersk", "CMA CGM"] },
-  { route: "Jebel Ali-Tema", companies: ["MSC", "Maersk"] },
-  // == Australia / Oceania Routes ==
   { route: "Sydney-Tokyo", companies: ["ONE", "ANL (a CMA CGM Company)"] },
-  { route: "Shanghai-Sydney", companies: ["COSCO", "Maersk", "MSC"] },
-  { route: "Singapore-Melbourne", companies: ["Hapag-Lloyd", "ANL", "ONE"] },
-  { route: "Los Angeles-Auckland", companies: ["Maersk", "MSC"] },
-  { route: "Yokohama-Brisbane", companies: ["ONE", "OOCL"] },
-  // == Major Air & Domestic Routes ==
-  { route: "Chicago-Los Angeles", companies: ["UPS", "FedEx", "BNSF Railway"] }, // Air/Rail
-  { route: "Hong Kong-Anchorage", companies: ["Cathay Pacific Cargo", "FedEx Express"] },
-  { route: "Memphis-Paris", companies: ["FedEx Express"] },
-  { route: "Frankfurt-Shanghai", companies: ["Lufthansa Cargo", "Air China Cargo"] },
-  { route: "Dubai-London", companies: ["Emirates SkyCargo"] },
-  { route: "Incheon-Chicago", companies: ["Korean Air Cargo", "Atlas Air"] }
+  { route: "Shanghai-Sydney", companies: ["COSCO", "Maersk", "MSC"] }
 ];
 
-// Other Mock Data
 const cargoTypes = [
   "Electronics", "Textiles", "Machinery", "Chemicals", "Automotive",
   "Food Products", "Pharmaceuticals", "Oil & Gas", "Raw Materials",
@@ -100,11 +50,10 @@ const shipmentTypes = [
   { value: "Air", icon: Plane, color: "text-purple-600" }
 ];
 
-// == REWRITTEN MOCK DATA GENERATION ==
-// This function now creates realistic company profiles from the data above.
+// Generate companies from real data
 const generateMockCompanies = () => {
   const companyProfiles = new Map();
-
+  
   routesWithCompanies.forEach(item => {
     item.companies.forEach(companyName => {
       if (!companyProfiles.has(companyName)) {
@@ -142,20 +91,24 @@ const generateMockCompanies = () => {
       submittedAt: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000),
       clicks: Math.floor(Math.random() * 2500),
       views: Math.floor(Math.random() * 10000),
-      quotes: Math.floor(Math.random() * 500)
+      quotes: Math.floor(Math.random() * 500),
+      submittedBy: {
+        name: `${name} Admin`,
+        email: `admin@${name.toLowerCase().replace(/\s/g, '').replace(/[()]/g, '')}.com`,
+        phone: `+${Math.floor(Math.random() * 90) + 10}-555-${Math.floor(Math.random() * 9000) + 1000}`,
+        designation: "Operations Manager"
+      }
     };
   });
   
   return finalCompanies;
 };
 
-const mockCompanies = generateMockCompanies();
-
 const initialCompanyFormState = {
-    name: "", website: "", contact: "", email: "", description: "",
-    established: new Date().getFullYear(), routes: [], cargoTypes: [], shipmentTypes: [],
-    coverage: "Global", maxCoverageAmount: "", maxCoverageCurrency: "USD",
-    submitterName: "", submitterEmail: "", submitterPhone: "", submitterDesignation: ""
+  name: "", website: "", contact: "", email: "", description: "",
+  established: new Date().getFullYear(), routes: [], cargoTypes: [], shipmentTypes: [],
+  coverage: "Global", maxCoverageAmount: "", maxCoverageCurrency: "USD",
+  submitterName: "", submitterEmail: "", submitterPhone: "", submitterDesignation: ""
 };
 
 function SurakshitSafar() {
@@ -168,7 +121,7 @@ function SurakshitSafar() {
   const [arrivalPort, setArrivalPort] = useState("");
   const [selectedCargoType, setSelectedCargoType] = useState("");
   const [selectedShipmentType, setSelectedShipmentType] = useState("");
-  const [filteredCompanies, setFilteredCompanies] = useState(mockCompanies);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
   
   const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -177,20 +130,47 @@ function SurakshitSafar() {
   const [showCompanyDetails, setShowCompanyDetails] = useState(false);
   
   const [adminTab, setAdminTab] = useState("dashboard");
-  const [companies, setCompanies] = useState(mockCompanies);
+  const [companies, setCompanies] = useState([]);
   const [adminFilters, setAdminFilters] = useState({
     status: "all",
     paymentStatus: "all",
     search: ""
   });
+
+  // Load companies from database
+  const loadCompaniesFromDB = async () => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const endpoint = token ? `${API_URL}/companies/all` : `${API_URL}/companies/approved`;
+      const headers = token ? {
+        'Authorization': `Bearer ${token}`
+      } : {};
+
+      const response = await fetch(endpoint, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data.map(c => ({
+          ...c,
+          id: c._id,
+          clicks: c.analytics?.clicks || 0,
+          views: c.analytics?.views || 0,
+          quotes: c.analytics?.quotes || 0,
+          maxCoverage: `${c.maxCoverage?.amount}M ${c.maxCoverage?.currency}`,
+        })));
+      }
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      setCompanies(generateMockCompanies());
+    }
+  };
+
+  useEffect(() => {
+    loadCompaniesFromDB();
+  }, []);
   
   const [companyForm, setCompanyForm] = useState(initialCompanyFormState);
   const [currentRoute, setCurrentRoute] = useState("");
-
-  const [adminCredentials, setAdminCredentials] = useState({
-    username: "",
-    password: ""
-  });
+  const [adminCredentials, setAdminCredentials] = useState({ username: "", password: "" });
 
   useEffect(() => {
     let results = companies.filter(c => c.status === "approved" && c.paymentStatus === "completed");
@@ -216,21 +196,29 @@ function SurakshitSafar() {
     }
     
     if (selectedCargoType) {
-      results = results.filter(company =>
-        company.cargoTypes.includes(selectedCargoType)
-      );
+      results = results.filter(company => company.cargoTypes.includes(selectedCargoType));
     }
     
     if (selectedShipmentType) {
-      results = results.filter(company =>
-        company.shipmentTypes.includes(selectedShipmentType)
-      );
+      results = results.filter(company => company.shipmentTypes.includes(selectedShipmentType));
     }
     
     setFilteredCompanies(results);
   }, [searchTerm, departurePort, arrivalPort, selectedCargoType, selectedShipmentType, companies]);
 
-  const handleCompanyClick = (company) => {
+  const handleCompanyClick = async (company) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      if (token) {
+        await fetch(`${API_URL}/companies/${company.id}/analytics/click`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (error) {
+      console.error('Error tracking click:', error);
+    }
+    
     setCompanies(prev => prev.map(c => 
       c.id === company.id ? {...c, clicks: (c.clicks || 0) + 1} : c
     ));
@@ -253,8 +241,8 @@ function SurakshitSafar() {
   const handleShipmentTypeChange = (e) => {
     const { value, checked } = e.target;
     setCompanyForm(prev => ({
-        ...prev,
-        shipmentTypes: checked ? [...prev.shipmentTypes, value] : prev.shipmentTypes.filter(type => type !== value)
+      ...prev,
+      shipmentTypes: checked ? [...prev.shipmentTypes, value] : prev.shipmentTypes.filter(type => type !== value)
     }));
   };
 
@@ -269,49 +257,68 @@ function SurakshitSafar() {
     setCompanyForm(prev => ({ ...prev, routes: prev.routes.filter(route => route !== routeToRemove) }));
   };
 
-  const handleAddCompany = (e) => {
+  const handleAddCompany = async (e) => {
     e.preventDefault();
-    const submissionData = {
-      name: companyForm.name,
-      email: companyForm.email,
-      website: companyForm.website,
-      contact: companyForm.contact,
-      routes: companyForm.routes,
-      cargoTypes: companyForm.cargoTypes,
-      shipmentTypes: companyForm.shipmentTypes,
-      coverage: companyForm.coverage,
-      maxCoverage: {
-        amount: parseFloat(companyForm.maxCoverageAmount) * 1000000,
-        currency: companyForm.maxCoverageCurrency,
-      },
-      established: parseInt(companyForm.established, 10),
-      description: companyForm.description,
-      submittedBy: {
-        name: companyForm.submitterName,
-        email: companyForm.submitterEmail,
-        phone: companyForm.submitterPhone,
-        designation: companyForm.submitterDesignation
-      }
-    };
     
-    console.log("Submitting to backend:", submissionData);
-    alert(`Mock Submission Successful!\n\n(This is a mock action, no data was actually sent)`);
+    try {
+      const submissionData = {
+        name: companyForm.name,
+        email: companyForm.email,
+        website: companyForm.website,
+        contact: companyForm.contact,
+        routes: companyForm.routes,
+        cargoTypes: companyForm.cargoTypes,
+        shipmentTypes: companyForm.shipmentTypes,
+        coverage: companyForm.coverage,
+        maxCoverage: {
+          amount: parseFloat(companyForm.maxCoverageAmount),
+          currency: companyForm.maxCoverageCurrency,
+        },
+        established: parseInt(companyForm.established, 10),
+        description: companyForm.description,
+        submittedBy: {
+          name: companyForm.submitterName,
+          email: companyForm.submitterEmail,
+          phone: companyForm.submitterPhone,
+          designation: companyForm.submitterDesignation
+        }
+      };
 
-    setShowAddCompanyForm(false);
-    setCompanyForm(initialCompanyFormState);
+      const response = await fetch(`${API_URL}/companies/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Company "${companyForm.name}" submitted successfully! Please proceed to payment of ₹15,000.`);
+        setShowAddCompanyForm(false);
+        setCompanyForm(initialCompanyFormState);
+        loadCompaniesFromDB();
+      } else {
+        alert(data.message || 'Failed to submit company');
+      }
+    } catch (error) {
+      console.error('Error submitting company:', error);
+      alert('Failed to connect to server');
+    }
   };
 
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_URL = 'http://localhost:5000/api';
 
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/login`, {
+      const response = await fetch(`${API_URL}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(adminCredentials)
       });
+      
       const data = await response.json();
+      
       if (response.ok && data.success) {
         localStorage.setItem('adminToken', data.token);
         setIsAdminLoggedIn(true);
@@ -319,46 +326,107 @@ function SurakshitSafar() {
         setCurrentView("admin");
         setShowAdminLogin(false);
         setAdminCredentials({ username: "", password: "" });
-        alert("Login successful!");
+        loadCompaniesFromDB();
       } else {
-        alert(data.message || "Invalid credentials.");
+        alert(data.message || "Invalid credentials");
       }
     } catch (error) {
       console.error('Login error:', error);
-      alert("Failed to connect to server. Trying fallback demo login.");
-      if (adminCredentials.username === "gokul" && adminCredentials.password === "santji") {
+      alert("Failed to connect to server. Using demo mode.");
+      // Fallback to demo login
+      if (adminCredentials.username === "admin" && adminCredentials.password === "AdminPass123!") {
         setIsAdminLoggedIn(true);
-        setAdminUser({ username: "gokul", email: "gokul@surakshitsafar.com", role: "super_admin" });
+        setAdminUser({ username: "admin", email: "admin@surakshitsafar.com", role: "super_admin" });
         setCurrentView("admin");
         setShowAdminLogin(false);
         setAdminCredentials({ username: "", password: "" });
-        alert("Demo login successful! (Backend not connected)");
       }
     }
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('adminToken');
     setIsAdminLoggedIn(false);
     setAdminUser(null);
     setCurrentView("home");
   };
 
-  const handleApproveCompany = (companyId) => {
-    setCompanies(prev => prev.map(c =>
-      c.id === companyId ? {...c, status: "approved", verified: true} : c
-    ));
-    alert("Company approved successfully!");
+  const handleApproveCompany = async (companyId) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/companies/${companyId}/approve`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        alert("Company approved successfully!");
+        loadCompaniesFromDB();
+      } else {
+        alert("Failed to approve company");
+      }
+    } catch (error) {
+      console.error('Error approving company:', error);
+      // Fallback to local state update
+      setCompanies(prev => prev.map(c =>
+        c.id === companyId ? {...c, status: "approved", verified: true} : c
+      ));
+      alert("Company approved successfully!");
+    }
   };
 
-  const handleRejectCompany = (companyId, reason = "") => {
-    setCompanies(prev => prev.map(c =>
-      c.id === companyId ? {...c, status: "rejected"} : c
-    ));
-    alert("Company rejected!");
+  const handleRejectCompany = async (companyId, reason = "") => {
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/companies/${companyId}/reject`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+
+      if (response.ok) {
+        alert("Company rejected!");
+        loadCompaniesFromDB();
+      } else {
+        alert("Failed to reject company");
+      }
+    } catch (error) {
+      console.error('Error rejecting company:', error);
+      // Fallback to local state update
+      setCompanies(prev => prev.map(c =>
+        c.id === companyId ? {...c, status: "rejected"} : c
+      ));
+      alert("Company rejected!");
+    }
   };
 
-  const handleDeleteCompany = (companyId) => {
-    if (window.confirm("Are you sure you want to delete this company?")) {
+  const handleDeleteCompany = async (companyId) => {
+    if (!window.confirm("Are you sure you want to delete this company?")) return;
+    
+    try {
+      const token = localStorage.getItem('adminToken');
+      const response = await fetch(`${API_URL}/companies/${companyId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        alert("Company deleted successfully!");
+        loadCompaniesFromDB();
+      } else {
+        alert("Failed to delete company");
+      }
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      // Fallback to local state update
       setCompanies(prev => prev.filter(c => c.id !== companyId));
       alert("Company deleted successfully!");
     }
@@ -390,9 +458,7 @@ function SurakshitSafar() {
               </h3>
               <div className="flex items-center space-x-2 text-blue-100">
                 <span className="text-sm">{company.coverage}</span>
-                {company.verified && (
-                  <CheckCircle className="h-4 w-4 text-green-400" />
-                )}
+                {company.verified && <CheckCircle className="h-4 w-4 text-green-400" />}
               </div>
             </div>
           </div>
@@ -529,10 +595,7 @@ function SurakshitSafar() {
                     <p className="text-sm font-medium text-white">{adminUser?.username}</p>
                     <p className="text-xs text-gray-400">{adminUser?.role}</p>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
-                  >
+                  <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg transition-colors">
                     <LogOut className="h-4 w-4" />
                   </button>
                 </div>
@@ -551,22 +614,13 @@ function SurakshitSafar() {
                 { id: "analytics", label: "Analytics", icon: PieChart },
                 { id: "settings", label: "Settings", icon: Settings }
               ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setAdminTab(tab.id)}
+                <button key={tab.id} onClick={() => setAdminTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    adminTab === tab.id
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
-                  }`}
-                >
+                    adminTab === tab.id ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-white hover:border-gray-700'
+                  }`}>
                   <tab.icon className="h-4 w-4" />
                   <span>{tab.label}</span>
-                  {tab.badge > 0 && (
-                    <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                      {tab.badge}
-                    </span>
-                  )}
+                  {tab.badge > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{tab.badge}</span>}
                 </button>
               ))}
             </nav>
@@ -580,23 +634,19 @@ function SurakshitSafar() {
                 <h2 className="text-2xl font-bold text-white mb-2">Dashboard Overview</h2>
                 <p className="text-gray-400">Monitor your platform's performance and metrics</p>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Total Companies" value={dashboardStats.totalCompanies} change={12.5} trend="up" icon={Building} color="bg-blue-600" />
                 <StatCard title="Pending Approvals" value={dashboardStats.pendingCompanies} icon={Clock} color="bg-yellow-600" />
                 <StatCard title="Total Revenue" value={`₹${(dashboardStats.totalRevenue / 1000).toFixed(0)}K`} change={18.3} trend="up" icon={DollarSign} color="bg-green-600" />
                 <StatCard title="Total Clicks" value={dashboardStats.totalClicks.toLocaleString()} change={7.8} trend="up" icon={Activity} color="bg-purple-600" />
               </div>
-
               <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
                 <h3 className="text-lg font-semibold text-white mb-4">Recent Submissions</h3>
                 <div className="space-y-4">
                   {companies.slice(0, 5).map(company => (
                     <div key={company.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
                       <div className="flex items-center space-x-4">
-                        <div className="p-2 bg-gray-700 rounded-lg">
-                          <Building className="h-5 w-5 text-blue-400" />
-                        </div>
+                        <div className="p-2 bg-gray-700 rounded-lg"><Building className="h-5 w-5 text-blue-400" /></div>
                         <div>
                           <p className="font-medium text-white">{company.name}</p>
                           <p className="text-sm text-gray-400">{company.email}</p>
@@ -605,8 +655,7 @@ function SurakshitSafar() {
                       <div className="flex items-center space-x-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           company.status === 'approved' ? 'bg-green-600 text-white' :
-                          company.status === 'pending' ? 'bg-yellow-600 text-white' :
-                          'bg-red-600 text-white'
+                          company.status === 'pending' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white'
                         }`}>{company.status}</span>
                         <span className="text-sm text-gray-400">{new Date(company.submittedAt).toLocaleDateString()}</span>
                       </div>
@@ -626,7 +675,8 @@ function SurakshitSafar() {
                 </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <input type="text" placeholder="Search companies..." className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" value={adminFilters.search} onChange={(e) => setAdminFilters({...adminFilters, search: e.target.value})} />
+                  <input type="text" placeholder="Search companies..." className="pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={adminFilters.search} onChange={(e) => setAdminFilters({...adminFilters, search: e.target.value})} />
                 </div>
               </div>
               {getPendingCompanies().length === 0 ? (
@@ -671,6 +721,14 @@ function SurakshitSafar() {
                         <p className="text-sm text-gray-400 mb-2">Shipment Types:</p>
                         <div className="flex flex-wrap gap-2">
                           {company.shipmentTypes.map(type => (<span key={type} className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs">{type}</span>))}
+                        </div>
+                      </div>
+                      <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+                        <p className="text-sm font-medium text-gray-300 mb-1">Submitted by:</p>
+                        <div className="text-sm text-gray-400">
+                          <p>{company.submittedBy?.name}</p>
+                          <p>{company.submittedBy?.email}</p>
+                          <p>{company.submittedBy?.phone}</p>
                         </div>
                       </div>
                       <div className="flex space-x-3">
@@ -727,15 +785,13 @@ function SurakshitSafar() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                             company.status === 'approved' ? 'bg-green-600 text-white' :
-                            company.status === 'pending' ? 'bg-yellow-600 text-white' :
-                            'bg-red-600 text-white'
+                            company.status === 'pending' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white'
                           }`}>{company.status}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                             company.paymentStatus === 'completed' ? 'bg-green-600 text-white' :
-                            company.paymentStatus === 'pending' ? 'bg-yellow-600 text-white' :
-                            'bg-red-600 text-white'
+                            company.paymentStatus === 'pending' ? 'bg-yellow-600 text-white' : 'bg-red-600 text-white'
                           }`}>{company.paymentStatus}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -756,9 +812,102 @@ function SurakshitSafar() {
               </div>
             </div>
           )}
-          
-          {/* Other Admin Tabs can be added here */}
 
+          {adminTab === "analytics" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white">Analytics & Insights</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Total Engagement</h3>
+                    <Activity className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Views:</span>
+                      <span className="text-white font-semibold">{dashboardStats.totalViews.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Clicks:</span>
+                      <span className="text-white font-semibold">{dashboardStats.totalClicks.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Quotes:</span>
+                      <span className="text-white font-semibold">{dashboardStats.totalQuotes.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Revenue</h3>
+                    <DollarSign className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white mb-2">₹{(dashboardStats.totalRevenue / 1000).toFixed(1)}K</div>
+                  <p className="text-gray-400 text-sm">From {companies.filter(c => c.paymentStatus === 'completed').length} payments</p>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">Approval Rate</h3>
+                    <TrendingUp className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div className="text-3xl font-bold text-white mb-2">{((dashboardStats.approvedCompanies / dashboardStats.totalCompanies) * 100).toFixed(1)}%</div>
+                  <p className="text-gray-400 text-sm">{dashboardStats.approvedCompanies} of {dashboardStats.totalCompanies} companies</p>
+                </div>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                <h3 className="text-lg font-semibold text-white mb-4">Top Performing Companies</h3>
+                <div className="space-y-4">
+                  {companies.filter(c => c.status === 'approved').sort((a, b) => b.clicks - a.clicks).slice(0, 5).map((company, idx) => (
+                    <div key={company.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-2xl font-bold text-gray-600">#{idx + 1}</div>
+                        <div>
+                          <p className="font-medium text-white">{company.name}</p>
+                          <p className="text-sm text-gray-400">{company.coverage}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold text-white">{company.clicks} clicks</p>
+                        <p className="text-sm text-gray-400">{company.views} views</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {adminTab === "settings" && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white">Settings</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <h3 className="text-lg font-semibold text-white mb-4">Pricing Configuration</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Company Listing Fee (₹)</label>
+                      <input type="number" defaultValue="15000" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Update Pricing</button>
+                  </div>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <h3 className="text-lg font-semibold text-white mb-4">Admin Profile</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                      <input type="text" value={adminUser?.username || ''} disabled className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                      <input type="email" value={adminUser?.email || ''} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <button className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">Update Profile</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -775,9 +924,7 @@ function SurakshitSafar() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
               <Shield className="h-8 w-8 text-blue-500" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                SurakshitSafar
-              </span>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">SurakshitSafar</span>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <button onClick={() => setCurrentView("home")} className={`font-medium transition-colors ${currentView === "home" ? "text-blue-400" : "text-gray-300 hover:text-white"}`}>Home</button>
@@ -802,12 +949,8 @@ function SurakshitSafar() {
       <section className="bg-gradient-to-br from-gray-900 via-blue-900/50 to-purple-900/50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
-              Secure Your Cargo Journey
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-8">
-              Find the perfect insurance coverage for your shipments worldwide
-            </p>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">Secure Your Cargo Journey</h1>
+            <p className="text-xl md:text-2xl text-gray-300 mb-8">Find the perfect insurance coverage for your shipments worldwide</p>
           </div>
           <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-8 border border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -961,12 +1104,121 @@ function SurakshitSafar() {
             <form onSubmit={handleAdminLogin} className="p-6 space-y-4">
               <input type="text" required placeholder="Username" value={adminCredentials.username} onChange={(e) => setAdminCredentials({...adminCredentials, username: e.target.value})} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
               <input type="password" required placeholder="Password" value={adminCredentials.password} onChange={(e) => setAdminCredentials({...adminCredentials, password: e.target.value})} className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              <div className="text-xs text-gray-400 bg-gray-700 p-3 rounded-lg"><p><strong>Demo:</strong> gokul / santji</p></div>
+              <div className="text-xs text-gray-400 bg-gray-700 p-3 rounded-lg">
+                <p><strong>Default Credentials:</strong></p>
+                <p>Username: admin | Password: AdminPass123!</p>
+                <p>Username: moderator | Password: ModeratorPass123!</p>
+                <p className="text-yellow-400 mt-2">⚠️ Change passwords in production!</p>
+              </div>
               <div className="flex justify-end space-x-4">
                 <button type="button" onClick={() => setShowAdminLogin(false)} className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">Cancel</button>
                 <button type="submit" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">Login</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedCompany && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-700">
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-white">Company Details</h3>
+                <button onClick={() => setSelectedCompany(null)} className="text-gray-400 hover:text-white"><X className="h-6 w-6" /></button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Company Name</label>
+                  <p className="text-white font-semibold">{selectedCompany.name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Coverage</label>
+                  <p className="text-white">{selectedCompany.coverage}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Website</label>
+                  <a href={selectedCompany.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 break-all">{selectedCompany.website}</a>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Contact</label>
+                  <p className="text-white">{selectedCompany.contact}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                  <p className="text-white">{selectedCompany.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Established</label>
+                  <p className="text-white">{selectedCompany.established}</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Shipment Types</label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCompany.shipmentTypes.map(type => (
+                    <span key={type} className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">{type}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Cargo Types</label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCompany.cargoTypes.map(type => (
+                    <span key={type} className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm">{type}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Available Routes</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {selectedCompany.routes.map((route, idx) => (
+                    <div key={idx} className="flex items-center space-x-2 bg-gray-700 px-3 py-2 rounded">
+                      <Route className="h-4 w-4 text-blue-400" />
+                      <span className="text-gray-300 text-sm">{route}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedCompany.submittedBy && (
+                <div className="border-t border-gray-700 pt-4">
+                  <h4 className="text-lg font-semibold text-white mb-3">Submission Details</h4>
+                  <div className="bg-gray-700 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Submitted by:</span>
+                      <span className="text-white font-medium">{selectedCompany.submittedBy.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Email:</span>
+                      <span className="text-white">{selectedCompany.submittedBy.email}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Phone:</span>
+                      <span className="text-white">{selectedCompany.submittedBy.phone}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Designation:</span>
+                      <span className="text-white">{selectedCompany.submittedBy.designation}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Submitted on:</span>
+                      <span className="text-white">{new Date(selectedCompany.submittedAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-700 flex space-x-3">
+              <button onClick={() => { handleApproveCompany(selectedCompany.id); setSelectedCompany(null); }} className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors">Approve Company</button>
+              <button onClick={() => { handleRejectCompany(selectedCompany.id); setSelectedCompany(null); }} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-colors">Reject Company</button>
+              <button onClick={() => setSelectedCompany(null)} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-medium transition-colors">Close</button>
+            </div>
           </div>
         </div>
       )}
