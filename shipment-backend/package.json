@@ -4,8 +4,9 @@
   "description": "Backend API for SurakshitSafar Cargo Insurance Portal - A comprehensive platform for connecting cargo shipments with insurance providers",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+  "start": "node server.js",
+  "dev:seed": "npm run seed && nodemon server.js",
+  "dev": "npm run dev:seed",
     "prod": "NODE_ENV=production node server.js",
     "seed": "node src/scripts/seedData.js",
     "db:migrate": "node src/scripts/migrate.js",

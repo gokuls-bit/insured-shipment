@@ -332,4 +332,4 @@ module.exports = {
   generateKey,
   store
 };
-Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5000/api/health' | Select-Object -ExpandProperty ContentInvoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5000/api/health' | Select-Object -ExpandProperty Content
+

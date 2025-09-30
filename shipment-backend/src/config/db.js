@@ -2,6 +2,11 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
+// Enable mongoose debug logging when not in production to aid troubleshooting
+if (process.env.NODE_ENV !== 'production') {
+  mongoose.set('debug', true);
+}
+
 const connectDB = async () => {
   try {
     // MongoDB connection options
@@ -50,8 +55,10 @@ const connectDB = async () => {
 
     return conn;
   } catch (error) {
-    logger.error('Error connecting to MongoDB:', error.message);
-    
+    // Log full error object to aid debugging (includes stack and driver details)
+    logger.error('Error connecting to MongoDB:', error);
+    console.error('Error connecting to MongoDB:', error);
+
     // Exit process with failure
     process.exit(1);
   }
