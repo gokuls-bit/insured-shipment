@@ -190,6 +190,9 @@ router.get('/:companyId', validateCompanyId, getCompanyById);
 // POST /api/companies - Submit new company for approval
 router.post('/', validateCompanySubmission, submitCompany);
 
+// POST /api/companies/submit - Alternate endpoint for company submission
+router.post('/submit', validateCompanySubmission, submitCompany);
+
 // POST /api/companies/:companyId/track - Track company interaction
 router.post('/:companyId/track', validateCompanyId, validateTrackingData, trackCompanyClick);
 

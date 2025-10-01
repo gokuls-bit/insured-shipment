@@ -11,15 +11,15 @@ class MemoryStore {
 
   incr(key, callback) {
     const now = Date.now();
-    const resetTime = this.resetTime.get(key);
+    let resetTime = this.resetTime.get(key);
 
-    if (resetTime && now < resetTime) {
+    if (resetTime && resetTime instanceof Date && now < resetTime.getTime()) {
       const hits = this.hits.get(key) || 0;
       this.hits.set(key, hits + 1);
       callback(null, hits + 1, resetTime);
     } else {
       this.hits.set(key, 1);
-      const newResetTime = now + (15 * 60 * 1000); // 15 minutes
+      const newResetTime = new Date(now + 15 * 60 * 1000); // 15 minutes from now
       this.resetTime.set(key, newResetTime);
       callback(null, 1, newResetTime);
     }
