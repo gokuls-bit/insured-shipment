@@ -39,3 +39,9 @@
 {"level":"info","message":"Server started on port 5000","timestamp":"2025-10-01 10:23:00"}
 {"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-10-01 10:23:00"}
 {"adminId":"68db624343c87a639e004b2e","ipAddress":"::1","level":"info","message":"Admin login successful","role":"super_admin","timestamp":"2025-10-01 10:35:25","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","username":"gokul"}
+{"level":"info","message":"Server started on port 5000","timestamp":"2025-10-01 13:28:37"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-10-01 13:28:37"}
+{"level":"warn","message":"Route not found: GET /favicon.ico","timestamp":"2025-10-01 13:28:49"}
+{"adminId":"68db624343c87a639e004b2e","ipAddress":"::1","level":"info","message":"Admin login successful","role":"super_admin","timestamp":"2025-10-01 13:31:00","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36","username":"gokul"}
+{"level":"info","message":"Server started on port 5000","timestamp":"2025-10-02 16:00:20"}
+{"level":"info","message":"MongoDB Connected: localhost","timestamp":"2025-10-02 16:00:20"}

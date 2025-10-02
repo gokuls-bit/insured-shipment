@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Globe, Plus, Building, Truck, Train, Ship, Plane, MapPin, ExternalLink,
@@ -6,7 +6,7 @@ import {
   Package, TrendingUp, DollarSign, Clock, Route, AlertCircle, Eye, Trash2, LogOut,
   BarChart3, Settings, ChevronDown, Download, RefreshCw, Bell, Home, FileText,
   CreditCard, Activity, PieChart, Calendar, Inbox, CheckSquare, XCircle, Edit,
-  MoreVertical, Send, User, ShoppingCart, Zap, TrendingDown, ArrowUpRight
+  MoreVertical, Send, User, ShoppingCart, Zap, TrendingDown, ArrowUpRight, ArrowLeft
 } from 'lucide-react';
 
 // ============================================================================
@@ -38,6 +38,7 @@ const countryPortData = {
   "Canada": ["Vancouver", "Montreal", "Halifax"]
 };
 
+
 const cargoTypes = [
   "Electronics", "Textiles", "Machinery", "Chemicals", "Automotive",
   "Food Products", "Pharmaceuticals", "Oil & Gas", "Raw Materials",
@@ -53,98 +54,6 @@ const shipmentTypes = [
 ];
 
 // ============================================================================
-// MOCK DATA GENERATION
-// ============================================================================
-
-const generateMockCompaniesForRoute = (departure, arrival, cargoType, transportMode) => {
-  const yourCompany = {
-    id: "your-company-premium",
-    name: "SecureCargo Insurance Ltd.",
-    coverage: "Global Premium",
-    rating: "4.9",
-    maxCoverage: "$50M USD",
-    claimSettlement: "98%",
-    pricing: "₹2,50,000 - ₹5,00,000",
-    serviceTier: "Premium Plus",
-    highlight: true,
-    verified: true,
-    website: "https://www.securecargo.com",
-    contact: "+91-555-1234",
-    email: "contact@securecargo.com",
-    shipmentTypes: [transportMode],
-    cargoTypes: [cargoType],
-    description: "Industry-leading comprehensive coverage with 24/7 claims support and instant quote generation",
-    established: 1995,
-    routes: [`${departure} - ${arrival}`]
-  };
-
-  const otherCompanies = [
-    {
-      id: `comp-${Date.now()}-1`,
-      name: "Global Shield Maritime",
-      coverage: "Worldwide",
-      rating: "4.7",
-      maxCoverage: "$35M USD",
-      claimSettlement: "95%",
-      pricing: "₹2,00,000 - ₹4,50,000",
-      serviceTier: "Premium",
-      highlight: false,
-      verified: true,
-      website: "https://www.globalshield.com",
-      contact: "+91-555-2345",
-      email: "info@globalshield.com",
-      shipmentTypes: [transportMode],
-      cargoTypes: [cargoType],
-      description: "Trusted maritime insurance provider with extensive network coverage",
-      established: 2001,
-      routes: [`${departure} - ${arrival}`]
-    },
-    {
-      id: `comp-${Date.now()}-2`,
-      name: "TransitGuard Solutions",
-      coverage: "Asia-Pacific",
-      rating: "4.5",
-      maxCoverage: "$25M USD",
-      claimSettlement: "92%",
-      pricing: "₹1,50,000 - ₹3,50,000",
-      serviceTier: "Standard",
-      highlight: false,
-      verified: true,
-      website: "https://www.transitguard.com",
-      contact: "+91-555-3456",
-      email: "support@transitguard.com",
-      shipmentTypes: [transportMode],
-      cargoTypes: [cargoType],
-      description: "Regional specialist with competitive rates and fast claim processing",
-      established: 2008,
-      routes: [`${departure} - ${arrival}`]
-    },
-    {
-      id: `comp-${Date.now()}-3`,
-      name: "SafeFreight International",
-      coverage: "Regional",
-      rating: "4.3",
-      maxCoverage: "$20M USD",
-      claimSettlement: "89%",
-      pricing: "₹1,00,000 - ₹2,50,000",
-      serviceTier: "Basic",
-      highlight: false,
-      verified: true,
-      website: "https://www.safefreight.com",
-      contact: "+91-555-4567",
-      email: "hello@safefreight.com",
-      shipmentTypes: [transportMode],
-      cargoTypes: [cargoType],
-      description: "Affordable coverage options for small to medium enterprises",
-      established: 2012,
-      routes: [`${departure} - ${arrival}`]
-    }
-  ];
-
-  return [yourCompany, ...otherCompanies];
-};
-
-// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -153,12 +62,10 @@ function SurakshitSafar() {
   // STATE MANAGEMENT
   // ----------------------------------------------------------------------------
   
-  // View & Auth State
   const [currentView, setCurrentView] = useState("home");
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
   
-  // Search State (Country-Port Selection)
   const [departureCountry, setDepartureCountry] = useState("");
   const [arrivalCountry, setArrivalCountry] = useState("");
   const [departurePort, setDeparturePort] = useState("");
@@ -168,36 +75,31 @@ function SurakshitSafar() {
   const [selectedCargoType, setSelectedCargoType] = useState("");
   const [selectedShipmentType, setSelectedShipmentType] = useState("");
   
-  // Results State
-  const [mockCompanies, setMockCompanies] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [companies, setCompanies] = useState([]);
-  const [filteredCompanies, setFilteredCompanies] = useState([]);
+  const [sortOption, setSortOption] = useState("default");
   
-  // Modal State
   const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Admin State
   const [adminTab, setAdminTab] = useState("dashboard");
-  const [adminFilters, setAdminFilters] = useState({
-    status: "all",
-    paymentStatus: "all",
-    search: ""
-  });
+  const [adminFilters, setAdminFilters] = useState({ status: "all", paymentStatus: "all", search: "" });
   
-  // Form State
-  const [companyForm, setCompanyForm] = useState({
-    name: "", website: "", contact: "", email: "", description: "",
-    established: new Date().getFullYear(), routes: [], cargoTypes: [], 
-    shipmentTypes: [], coverage: "Global", maxCoverageAmount: "", 
-    maxCoverageCurrency: "USD", submitterName: "", submitterEmail: "", 
-    submitterPhone: "", submitterDesignation: ""
-  });
+  const initialFormState = {
+    name: "", website: "", contact: "", email: "", description: "", established: "",
+    routes: [], cargoTypes: [], shipmentTypes: [], coverage: "Global",
+    maxCoverageAmount: "", maxCoverageCurrency: "USD",
+    submitterName: "", submitterEmail: "", submitterPhone: "", submitterDesignation: ""
+  };
+  const [companyForm, setCompanyForm] = useState(initialFormState);
   const [currentRoute, setCurrentRoute] = useState("");
   const [adminCredentials, setAdminCredentials] = useState({ username: "", password: "" });
+  const [formStep, setFormStep] = useState(1);
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // ----------------------------------------------------------------------------
   // EFFECTS
@@ -208,17 +110,16 @@ function SurakshitSafar() {
     checkAdminAuth();
   }, []);
 
-  useEffect(() => {
-    if (departureCountry) setShowDeparturePorts(true);
-  }, [departureCountry]);
+  useEffect(() => { if (departureCountry) setShowDeparturePorts(true); }, [departureCountry]);
+  useEffect(() => { if (arrivalCountry) setShowArrivalPorts(true); }, [arrivalCountry]);
+  useEffect(() => { if (!showAddCompanyForm) { setCompanyForm(initialFormState); setFormStep(1); setFormErrors({}); setIsSubmitting(false); }}, [showAddCompanyForm]);
 
   useEffect(() => {
-    if (arrivalCountry) setShowArrivalPorts(true);
-  }, [arrivalCountry]);
-
-  useEffect(() => {
-    filterCompanies();
-  }, [companies, departurePort, arrivalPort, selectedCargoType, selectedShipmentType]);
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // ----------------------------------------------------------------------------
   // API FUNCTIONS
@@ -237,27 +138,35 @@ function SurakshitSafar() {
       const token = localStorage.getItem('adminToken');
       const endpoint = token ? `${API_URL}/companies/all` : `${API_URL}/companies/approved`;
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-
       const response = await fetch(endpoint, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        const formattedCompanies = data.map(c => ({
-          ...c,
-          id: c._id || c.id,
-          clicks: c.analytics?.clicks || 0,
-          views: c.analytics?.views || 0,
-          quotes: c.analytics?.quotes || 0,
-          maxCoverage: `${c.maxCoverage?.amount || 0}M ${c.maxCoverage?.currency || 'USD'}`,
-        }));
-        setCompanies(formattedCompanies);
-      }
+      if (!response.ok) throw new Error('Failed to fetch companies. Make sure your backend server is running.');
+      const data = await response.json();
+      const formattedCompanies = data.map(c => ({
+        ...c, id: c._id || c.id,
+        clicks: c.analytics?.clicks || 0, 
+        views: c.analytics?.views || 0,
+        quotes: c.analytics?.quotes || 0,
+        maxCoverage: `${c.maxCoverage?.amount || 0}M ${c.maxCoverage?.currency || 'USD'}`,
+        rating: c.rating || (Math.random() * (4.9 - 4.0) + 4.0).toFixed(1),
+        claimSettlement: c.claimSettlement || Math.floor(Math.random() * (98 - 90) + 90) + "%",
+        pricing: c.pricing || "Contact for Price",
+        serviceTier: c.serviceTier || "Standard",
+        highlight: c.highlight || false,
+        verified: c.status === 'approved' || false,
+        submittedAt: c.createdAt || new Date().toISOString()
+      }));
+      setCompanies(formattedCompanies);
     } catch (error) {
-      console.error('Error loading companies:', error);
+      console.error('Error loading companies:', error.message);
+      setToast({ message: error.message, type: 'error' });
       setCompanies([]);
     }
   };
-
+  
   const handleCompanyClick = async (company) => {
+    setCompanies(prev => prev.map(c => 
+      c.id === company.id ? {...c, clicks: (c.clicks || 0) + 1} : c
+    ));
     try {
       const token = localStorage.getItem('adminToken');
       if (token && company.id) {
@@ -269,10 +178,6 @@ function SurakshitSafar() {
     } catch (error) {
       console.error('Error tracking click:', error);
     }
-    
-    setCompanies(prev => prev.map(c => 
-      c.id === company.id ? {...c, clicks: (c.clicks || 0) + 1} : c
-    ));
   };
 
   // ----------------------------------------------------------------------------
@@ -281,337 +186,187 @@ function SurakshitSafar() {
   
   const handleSearch = () => {
     if (departurePort && arrivalPort && selectedCargoType && selectedShipmentType) {
-      const companies = generateMockCompaniesForRoute(
-        departurePort,
-        arrivalPort,
-        selectedCargoType,
-        selectedShipmentType
-      );
-      setMockCompanies(companies);
       setShowResults(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      alert("Please select all fields: Departure Port, Arrival Port, Cargo Type, and Transport Mode");
+      setToast({ message: "Please select all search fields.", type: 'error' });
     }
   };
 
   const handleNewSearch = () => {
     setShowResults(false);
-    setMockCompanies([]);
-    setDepartureCountry("");
-    setArrivalCountry("");
-    setDeparturePort("");
-    setArrivalPort("");
-    setSelectedCargoType("");
-    setSelectedShipmentType("");
-    setShowDeparturePorts(false);
-    setShowArrivalPorts(false);
+    setDepartureCountry(""); setArrivalCountry(""); setDeparturePort("");
+    setArrivalPort(""); setSelectedCargoType(""); setSelectedShipmentType("");
+    setShowDeparturePorts(false); setShowArrivalPorts(false);
   };
-
-  const filterCompanies = () => {
-    let results = companies.filter(c => 
-      c.status === "approved" && c.paymentStatus === "completed"
-    );
-    
-    if (departurePort || arrivalPort) {
-      results = results.filter(company =>
-        company.routes?.some(route => {
-          const parts = route.split('-');
-          if (parts.length < 2) return false;
-          const [dep, arr] = parts;
-          const matchesDeparture = !departurePort || 
-            (dep && dep.toLowerCase().includes(departurePort.toLowerCase()));
-          const matchesArrival = !arrivalPort || 
-            (arr && arr.toLowerCase().includes(arrivalPort.toLowerCase()));
-          return matchesDeparture && matchesArrival;
-        })
-      );
-    }
-    
-    if (selectedCargoType) {
-      results = results.filter(company => 
-        company.cargoTypes?.includes(selectedCargoType)
-      );
-    }
-    
-    if (selectedShipmentType) {
-      results = results.filter(company => 
-        company.shipmentTypes?.includes(selectedShipmentType)
-      );
-    }
-    
-    setFilteredCompanies(results);
-  };
-
+  
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setCompanyForm(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: null }));
   };
-
-  const handleCargoTypeChange = (e) => {
+  
+  const handleMultiSelectChange = (e, field) => {
     const { value, checked } = e.target;
-    setCompanyForm(prev => ({
-      ...prev,
-      cargoTypes: checked 
-        ? [...prev.cargoTypes, value] 
-        : prev.cargoTypes.filter(type => type !== value)
-    }));
-  };
-
-  const handleShipmentTypeChange = (e) => {
-    const { value, checked } = e.target;
-    setCompanyForm(prev => ({
-      ...prev,
-      shipmentTypes: checked 
-        ? [...prev.shipmentTypes, value] 
-        : prev.shipmentTypes.filter(type => type !== value)
-    }));
+    setCompanyForm(prev => {
+        const currentValues = prev[field];
+        const newValues = checked ? [...currentValues, value] : currentValues.filter(item => item !== value);
+        return { ...prev, [field]: newValues };
+    });
+    if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: null }));
   };
 
   const handleAddRoute = () => {
     if (currentRoute && !companyForm.routes.includes(currentRoute)) {
       setCompanyForm(prev => ({ ...prev, routes: [...prev.routes, currentRoute] }));
       setCurrentRoute("");
+      if (formErrors.routes) setFormErrors(prev => ({ ...prev, routes: null }));
     }
   };
 
   const handleRemoveRoute = (routeToRemove) => {
-    setCompanyForm(prev => ({ 
-      ...prev, 
-      routes: prev.routes.filter(route => route !== routeToRemove) 
-    }));
+    setCompanyForm(prev => ({ ...prev, routes: prev.routes.filter(route => route !== routeToRemove) }));
   };
+  
+  const validateStep = (step) => {
+    const errors = {};
+    const { name, email, website, contact, maxCoverageAmount, routes, cargoTypes, shipmentTypes, submitterName, submitterEmail, submitterPhone } = companyForm;
+
+    if (step === 1) {
+        if (!name.trim()) errors.name = "Legal company name is required.";
+        if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "A valid official email is required.";
+        if (!website.trim() || !/^https?:\/\/.+/.test(website)) errors.website = "A valid website URL (starting with http/https) is required.";
+        if (!contact.trim() || contact.length < 10) errors.contact = "A valid primary contact number is required.";
+        if (!maxCoverageAmount) errors.maxCoverageAmount = "Max coverage amount is required.";
+    }
+    if (step === 2) {
+        if (routes.length === 0) errors.routes = "Please add at least one popular route.";
+        if (shipmentTypes.length === 0) errors.shipmentTypes = "Please select at least one shipment method.";
+        if (cargoTypes.length === 0) errors.cargoTypes = "Please select at least one cargo type.";
+    }
+    if (step === 3) {
+        if (!submitterName.trim()) errors.submitterName = "Submitter's name is required.";
+        if (!submitterEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail)) errors.submitterEmail = "A valid submitter email is required.";
+        if (!submitterPhone.trim() || submitterPhone.length < 10) errors.submitterPhone = "A valid submitter phone number is required.";
+    }
+    return errors;
+  };
+
+  const handleNextStep = () => {
+      const errors = validateStep(formStep);
+      if (Object.keys(errors).length > 0) setFormErrors(errors);
+      else { setFormErrors({}); setFormStep(prev => prev + 1); }
+  };
+
+  const handlePrevStep = () => setFormStep(prev => prev - 1);
 
   const handleAddCompany = async (e) => {
     e.preventDefault();
+    const finalErrors = validateStep(3);
+    if (Object.keys(finalErrors).length > 0) { setFormErrors(finalErrors); return; }
     
-    // Client-side validation
-    const errors = [];
-    
-    if (!companyForm.name || companyForm.name.length < 2) {
-      errors.push("Company name must be at least 2 characters");
-    }
-    
-    if (!companyForm.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyForm.email)) {
-      errors.push("Please provide a valid email address");
-    }
-    
-    if (!companyForm.website || !/^https?:\/\/.+/.test(companyForm.website)) {
-      errors.push("Please provide a valid website URL");
-    }
-    
-    if (!companyForm.contact || companyForm.contact.length < 10) {
-      errors.push("Please provide a valid phone number (minimum 10 digits)");
-    }
-    
-    if (companyForm.cargoTypes.length === 0) {
-      errors.push("Please select at least one cargo type");
-    }
-    
-    if (companyForm.shipmentTypes.length === 0) {
-      errors.push("Please select at least one shipment method");
-    }
-    
-    if (companyForm.routes.length === 0) {
-      errors.push("Please add at least one route");
-    }
-    
-    if (!companyForm.coverage) {
-      errors.push("Please select coverage type");
-    }
-    
-    if (!companyForm.submitterName || companyForm.submitterName.length < 2 || companyForm.submitterName.length > 50) {
-      errors.push("Submitter name must be between 2 and 50 characters");
-    }
-    
-    if (!companyForm.submitterEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companyForm.submitterEmail)) {
-      errors.push("Please provide a valid submitter email address");
-    }
-    
-    if (!companyForm.submitterPhone || companyForm.submitterPhone.length < 10) {
-      errors.push("Please provide a valid phone number");
-    }
-    
-    // Show errors if any
-    if (errors.length > 0) {
-      alert("Validation errors:\n\n" + errors.join("\n"));
-      return;
-    }
-    
+    setIsSubmitting(true);
     try {
       const response = await fetch(`${API_URL}/companies/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: companyForm.name,
-          email: companyForm.email,
-          website: companyForm.website,
-          contact: companyForm.contact,
-          routes: companyForm.routes,
-          cargoTypes: companyForm.cargoTypes,
-          shipmentTypes: companyForm.shipmentTypes,
-          coverage: companyForm.coverage,
+          ...companyForm,
           maxCoverage: {
             amount: parseFloat(companyForm.maxCoverageAmount) || 10,
             currency: companyForm.maxCoverageCurrency,
           },
-          established: parseInt(companyForm.established, 10),
-          description: companyForm.description,
+          established: parseInt(companyForm.established, 10) || null,
           submittedBy: {
-            name: companyForm.submitterName,
-            email: companyForm.submitterEmail,
-            phone: companyForm.submitterPhone,
-            designation: companyForm.submitterDesignation || "Manager"
+            name: companyForm.submitterName, email: companyForm.submitterEmail,
+            phone: companyForm.submitterPhone, designation: companyForm.submitterDesignation || "N/A"
           }
         }),
       });
       
       const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Submission failed.");
       
-      if (!response.ok) {
-        if (data.errors && Array.isArray(data.errors)) {
-          alert("Validation errors:\n\n" + data.errors.map(err => err.msg).join("\n"));
-        } else {
-          alert(data.message || "Submission failed");
-        }
-        return;
-      }
-      
-      alert(`Company "${companyForm.name}" submitted successfully! Please proceed to payment of ₹15,000.`);
+      setToast({ message: `Company "${companyForm.name}" submitted successfully!`, type: 'success' });
       setShowAddCompanyForm(false);
-      setCompanyForm({
-        name: "", website: "", contact: "", email: "", description: "",
-        established: new Date().getFullYear(), routes: [], cargoTypes: [], 
-        shipmentTypes: [], coverage: "Global", maxCoverageAmount: "", 
-        maxCoverageCurrency: "USD", submitterName: "", submitterEmail: "", 
-        submitterPhone: "", submitterDesignation: ""
-      });
       loadCompaniesFromDB();
     } catch (error) {
       console.error('Error submitting company:', error);
-      alert('Failed to connect to server. Please check your connection and try again.');
+      setToast({ message: `Submission failed: ${error.message}`, type: 'error' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
+  
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await fetch(`${API_URL}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(adminCredentials)
       });
-      
       const data = await response.json();
-      
       if (response.ok && data.success) {
         localStorage.setItem('adminToken', data.token);
-        setIsAdminLoggedIn(true);
-        setAdminUser(data.admin);
-        setCurrentView("admin");
-        setShowAdminLogin(false);
-        setAdminCredentials({ username: "", password: "" });
+        setIsAdminLoggedIn(true); setAdminUser(data.admin); setCurrentView("admin");
+        setShowAdminLogin(false); setAdminCredentials({ username: "", password: "" });
         loadCompaniesFromDB();
+        setToast({ message: 'Admin login successful!', type: 'success' });
       } else {
-        alert(data.message || "Invalid credentials");
+        throw new Error(data.message || "Invalid credentials");
       }
     } catch (error) {
       console.error('Login error:', error);
-      // Fallback demo login
-      if (adminCredentials.username === "admin" && adminCredentials.password === "AdminPass123!") {
-        localStorage.setItem('adminToken', 'demo-token');
-        setIsAdminLoggedIn(true);
-        setAdminUser({ username: "admin", email: "admin@surakshitsafar.com", role: "super_admin" });
-        setCurrentView("admin");
-        setShowAdminLogin(false);
-        setAdminCredentials({ username: "", password: "" });
-      } else {
-        alert("Failed to connect to server. Using demo mode with credentials: admin / AdminPass123!");
-      }
+      setToast({ message: error.message, type: 'error' });
     }
   };
-
+  
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    setIsAdminLoggedIn(false);
-    setAdminUser(null);
-    setCurrentView("home");
-    setAdminTab("dashboard");
+    setIsAdminLoggedIn(false); setAdminUser(null); setCurrentView("home");
+    setAdminTab("dashboard"); loadCompaniesFromDB();
+    setToast({ message: 'You have been logged out.', type: 'info' });
   };
-
+  
   const handleApproveCompany = async (companyId) => {
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${API_URL}/companies/${companyId}/approve`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (response.ok) {
-        alert("Company approved successfully!");
-        loadCompaniesFromDB();
-      } else {
-        alert("Failed to approve company");
-      }
+      if (!response.ok) throw new Error('Failed to approve company');
+      setToast({ message: "Company approved successfully!", type: 'success' });
+      loadCompaniesFromDB(); setSelectedCompany(null);
     } catch (error) {
-      console.error('Error approving company:', error);
-      setCompanies(prev => prev.map(c =>
-        c.id === companyId ? {...c, status: "approved", verified: true} : c
-      ));
-      alert("Company approved successfully! (Demo mode)");
+      setToast({ message: `Error: ${error.message}`, type: 'error' });
     }
   };
-
-  const handleRejectCompany = async (companyId, reason = "") => {
+  
+  const handleRejectCompany = async (companyId) => {
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${API_URL}/companies/${companyId}/reject`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ rejectionReason: reason })
+        method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (response.ok) {
-        alert("Company rejected!");
-        loadCompaniesFromDB();
-      } else {
-        alert("Failed to reject company");
-      }
+      if (!response.ok) throw new Error('Failed to reject company');
+      setToast({ message: "Company rejected successfully!", type: 'info' });
+      loadCompaniesFromDB(); setSelectedCompany(null);
     } catch (error) {
-      console.error('Error rejecting company:', error);
-      setCompanies(prev => prev.map(c =>
-        c.id === companyId ? {...c, status: "rejected"} : c
-      ));
-      alert("Company rejected! (Demo mode)");
+      setToast({ message: `Error: ${error.message}`, type: 'error' });
     }
   };
 
   const handleDeleteCompany = async (companyId) => {
-    if (!window.confirm("Are you sure you want to delete this company?")) return;
-    
+    if (!window.confirm("Are you sure?")) return;
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${API_URL}/companies/${companyId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
-
-      if (response.ok) {
-        alert("Company deleted successfully!");
-        loadCompaniesFromDB();
-      } else {
-        alert("Failed to delete company");
-      }
+      if (!response.ok) throw new Error('Failed to delete company');
+      setToast({ message: "Company deleted successfully!", type: 'success' });
+      loadCompaniesFromDB();
     } catch (error) {
-      console.error('Error deleting company:', error);
-      setCompanies(prev => prev.filter(c => c.id !== companyId));
-      alert("Company deleted successfully! (Demo mode)");
+      setToast({ message: `Error: ${error.message}`, type: 'error' });
     }
   };
 
@@ -619,10 +374,27 @@ function SurakshitSafar() {
   // COMPUTED VALUES
   // ----------------------------------------------------------------------------
   
+  const sortedAndFilteredCompanies = useMemo(() => {
+    const visibleCompanies = companies.filter(company => {
+      const isApproved = company.status === 'approved';
+      const routeMatch = !departurePort || !arrivalPort || company.routes.some(route => route.toLowerCase().includes(departurePort.toLowerCase()) && route.toLowerCase().includes(arrivalPort.toLowerCase()));
+      const cargoMatch = !selectedCargoType || company.cargoTypes.includes(selectedCargoType);
+      const shipmentMatch = !selectedShipmentType || company.shipmentTypes.includes(selectedShipmentType);
+      return isApproved && routeMatch && cargoMatch && shipmentMatch;
+    });
+
+    switch (sortOption) {
+      case 'rating': return [...visibleCompanies].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+      case 'coverage': return [...visibleCompanies].sort((a, b) => parseFloat(b.maxCoverage) - parseFloat(a.maxCoverage));
+      case 'claims': return [...visibleCompanies].sort((a, b) => parseFloat(b.claimSettlement) - parseFloat(a.claimSettlement));
+      default: return visibleCompanies;
+    }
+  }, [companies, departurePort, arrivalPort, selectedCargoType, selectedShipmentType, sortOption]);
+  
   const dashboardStats = {
     totalCompanies: companies.length,
     approvedCompanies: companies.filter(c => c.status === "approved").length,
-    pendingCompanies: companies.filter(c => c.status === "pending" && c.paymentStatus === "completed").length,
+    pendingCompanies: companies.filter(c => c.status === "pending").length,
     rejectedCompanies: companies.filter(c => c.status === "rejected").length,
     totalRevenue: companies.filter(c => c.paymentStatus === "completed").length * 15000,
     totalClicks: companies.reduce((sum, c) => sum + (c.clicks || 0), 0),
@@ -631,34 +403,41 @@ function SurakshitSafar() {
   };
 
   const getPendingCompanies = () => {
-    let filtered = companies.filter(c => c.status === "pending" && c.paymentStatus === "completed");
-    if (adminFilters.search) {
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(adminFilters.search.toLowerCase())
-      );
-    }
+    let filtered = companies.filter(c => c.status === "pending");
+    if (adminFilters.search) filtered = filtered.filter(c => c.name?.toLowerCase().includes(adminFilters.search.toLowerCase()));
     return filtered;
   };
 
   const getFilteredCompanies = () => {
     let filtered = companies;
-    if (adminFilters.status !== "all") {
-      filtered = filtered.filter(c => c.status === adminFilters.status);
-    }
-    if (adminFilters.paymentStatus !== "all") {
-      filtered = filtered.filter(c => c.paymentStatus === adminFilters.paymentStatus);
-    }
-    if (adminFilters.search) {
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(adminFilters.search.toLowerCase())
-      );
-    }
+    if (adminFilters.status !== "all") filtered = filtered.filter(c => c.status === adminFilters.status);
+    if (adminFilters.paymentStatus !== "all") filtered = filtered.filter(c => c.paymentStatus === adminFilters.paymentStatus);
+    if (adminFilters.search) filtered = filtered.filter(c => c.name?.toLowerCase().includes(adminFilters.search.toLowerCase()));
     return filtered;
   };
 
   // ============================================================================
-  // COMPONENT DEFINITIONS
+  // NESTED COMPONENTS
   // ============================================================================
+
+  const Toast = ({ message, type, onClose }) => (
+    <motion.div
+      initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 100 }}
+      layout
+      className={`fixed top-5 right-5 z-[100] p-4 rounded-lg shadow-lg text-white max-w-sm ${
+        type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+      }`}
+    >
+      <div className="flex items-center">
+        {type === 'success' && <CheckCircle className="mr-3 flex-shrink-0" />}
+        {type === 'error' && <AlertCircle className="mr-3 flex-shrink-0" />}
+        <p className="flex-grow">{message}</p>
+        <button onClick={onClose} className="ml-4 p-1 rounded-full hover:bg-white/20 flex-shrink-0">
+          <X size={18} />
+        </button>
+      </div>
+    </motion.div>
+  );
 
   const CompanyCard = ({ company, index }) => (
     <motion.div
@@ -701,7 +480,7 @@ function SurakshitSafar() {
                 <Globe className="h-4 w-4" />
                 <span className="text-sm font-medium">{company.coverage}</span>
                 {company.verified && (
-                  <CheckCircle className="h-4 w-4 text-green-300" />
+                  <CheckCircle className="h-4 w-4 text-green-300" title="Verified" />
                 )}
               </div>
             </div>
@@ -861,33 +640,21 @@ function SurakshitSafar() {
     </div>
   );
 
-  const StatCard = ({ title, value, change, icon: Icon, color, trend }) => (
-    <motion.div 
-      whileHover={{ scale: 1.02, y: -5 }}
-      className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-lg"
-    >
+  const StatCard = ({ title, value, icon: Icon, color }) => (
+    <motion.div whileHover={{ scale: 1.02, y: -5 }} className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-        {change && (
-          <div className={`flex items-center space-x-1 text-sm ${trend === 'up' ? 'text-green-400' : 'text-red-400'}`}>
-            {trend === 'up' ? <ArrowUpRight className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-            <span>{change}%</span>
-          </div>
-        )}
+        <div className={`p-3 rounded-lg ${color}`}><Icon className="h-6 w-6 text-white" /></div>
       </div>
       <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
       <p className="text-gray-400 text-sm">{title}</p>
     </motion.div>
   );
 
-  // ============================================================================
-  // ADMIN DASHBOARD COMPONENT
-  // ============================================================================
-
   const AdminDashboard = () => (
     <div className="min-h-screen bg-gray-950">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
       <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40 backdrop-blur-sm bg-opacity-95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -981,8 +748,6 @@ function SurakshitSafar() {
                 <StatCard 
                   title="Total Companies" 
                   value={dashboardStats.totalCompanies} 
-                  change={12.5} 
-                  trend="up" 
                   icon={Building} 
                   color="bg-blue-600" 
                 />
@@ -995,16 +760,12 @@ function SurakshitSafar() {
                 <StatCard 
                   title="Total Revenue" 
                   value={`₹${(dashboardStats.totalRevenue / 1000).toFixed(0)}K`} 
-                  change={18.3} 
-                  trend="up" 
                   icon={DollarSign} 
                   color="bg-green-600" 
                 />
                 <StatCard 
                   title="Total Clicks" 
                   value={dashboardStats.totalClicks.toLocaleString()} 
-                  change={7.8} 
-                  trend="up" 
                   icon={Activity} 
                   color="bg-purple-600" 
                 />
@@ -1335,7 +1096,7 @@ function SurakshitSafar() {
                     <TrendingUp className="h-6 w-6 text-purple-400" />
                   </div>
                   <div className="text-3xl font-bold text-white mb-2">
-                    {((dashboardStats.approvedCompanies / dashboardStats.totalCompanies) * 100).toFixed(1)}%
+                    {((dashboardStats.approvedCompanies / dashboardStats.totalCompanies) * 100 || 0).toFixed(1)}%
                   </div>
                   <p className="text-gray-400 text-sm">
                     {dashboardStats.approvedCompanies} of {dashboardStats.totalCompanies} companies
@@ -1452,22 +1213,17 @@ function SurakshitSafar() {
       </div>
     </div>
   );
-
-  // ============================================================================
-  // MAIN RENDER - ADMIN VIEW
-  // ============================================================================
-
+  
   if (isAdminLoggedIn && currentView === "admin") {
     return <AdminDashboard />;
   }
 
-  // ============================================================================
-  // MAIN RENDER - PUBLIC VIEW
-  // ============================================================================
-
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Navigation */}
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+
       <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -1501,7 +1257,6 @@ function SurakshitSafar() {
                 List Your Company
               </motion.button>
               
-              {/* Star Button for Admin Access */}
               <motion.button
                 whileHover={{ scale: 1.1, rotate: 180 }}
                 whileTap={{ scale: 0.9 }}
@@ -1517,7 +1272,6 @@ function SurakshitSafar() {
               </motion.button>
             </div>
 
-            {/* Mobile Menu Button */}
             <motion.button 
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -1528,7 +1282,6 @@ function SurakshitSafar() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
@@ -1572,7 +1325,6 @@ function SurakshitSafar() {
         </AnimatePresence>
       </nav>
 
-      {/* Hero Section with Search */}
       {!showResults && (
         <section className="bg-gradient-to-br from-gray-900 via-blue-900/30 to-purple-900/30 py-16 relative overflow-hidden">
           <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
@@ -1667,7 +1419,6 @@ function SurakshitSafar() {
         </section>
       )}
 
-      {/* Results Section */}
       <AnimatePresence>
         {showResults && (
           <motion.div 
@@ -1690,25 +1441,36 @@ function SurakshitSafar() {
                     Mode: <span className="text-white font-semibold">{selectedShipmentType}</span>
                   </p>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleNewSearch}
-                  className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
-                >
-                  <ArrowRight className="h-5 w-5 rotate-180" />
-                  <span>New Search</span>
-                </motion.button>
+                <div className="flex items-center gap-4">
+                  <select value={sortOption} onChange={e => setSortOption(e.target.value)} className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                    <option value="default">Sort By</option>
+                    <option value="rating">Best Rating</option>
+                    <option value="coverage">Max Coverage</option>
+                    <option value="claims">Claim Settlement</option>
+                  </select>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleNewSearch}
+                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    <span>New Search</span>
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-              {mockCompanies.map((company, index) => (
-                <CompanyCard key={company.id} company={company} index={index} />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {sortedAndFilteredCompanies.length > 0 ? (
+                sortedAndFilteredCompanies.map((company, index) => (
+                  <CompanyCard key={company.id} company={company} index={index} />
+                ))
+              ) : (
+                <p className="text-center col-span-2 text-gray-400 py-12">No insurance providers found for the selected criteria.</p>
+              )}
             </div>
             
-            {/* Add New Company CTA when results exist */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1738,46 +1500,6 @@ function SurakshitSafar() {
         )}
       </AnimatePresence>
 
-      {/* No Results Found - Prominent CTA */}
-      {showResults && mockCompanies.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-        >
-          <div className="bg-gray-900 rounded-2xl p-12 text-center border-2 border-gray-800">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-            >
-              <Package className="h-24 w-24 text-gray-600 mx-auto mb-6" />
-            </motion.div>
-            <h3 className="text-3xl font-bold text-white mb-4">No Companies Found</h3>
-            <p className="text-gray-400 mb-8 text-lg">
-              We couldn't find any insurance providers for this route combination.<br />
-              Be the first to list your company!
-            </p>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowAddCompanyForm(true)}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-5 rounded-xl font-bold text-xl transition-all duration-200 inline-flex items-center space-x-4 shadow-2xl shadow-green-500/40"
-            >
-              <Plus className="h-7 w-7" />
-              <span>Add Your Company</span>
-              <Zap className="h-6 w-6" />
-            </motion.button>
-            
-            <p className="text-sm text-gray-500 mt-6">
-              One-time listing fee: ₹15,000 | Reach thousands of potential customers
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Company Submission Form Modal */}
       <AnimatePresence>
         {showAddCompanyForm && (
           <motion.div
@@ -1792,13 +1514,13 @@ function SurakshitSafar() {
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 my-8"
+              className="bg-gray-800 rounded-xl max-w-4xl w-full max-h-[95vh] border border-gray-700 flex flex-col"
             >
-              <div className="p-6 border-b border-gray-700 sticky top-0 bg-gray-800 z-10">
+              <div className="p-6 border-b border-gray-700">
                 <div className="flex justify-between items-center">
                   <h3 className="text-xl font-bold text-white">List Your Insurance Company</h3>
                   <motion.button 
-                    whileHover={{ scale: 1.1 }}
+                    whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => setShowAddCompanyForm(false)} 
                     className="text-gray-400 hover:text-white"
@@ -1807,251 +1529,205 @@ function SurakshitSafar() {
                   </motion.button>
                 </div>
                 <p className="text-sm text-gray-400 mt-2">
-                  Complete the form below. Listing fee: ₹15,000 (One-time payment).
+                  One-time listing fee: ₹15,000. Complete all steps to get listed.
                 </p>
               </div>
-              
-              <form onSubmit={handleAddCompany} className="p-6 space-y-6">
-                <div>
-                  <h4 className="text-lg font-semibold text-blue-400 mb-4 border-b border-gray-700 pb-2">
-                    Company Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      name="name" 
-                      type="text" 
-                      required 
-                      placeholder="Company Name *" 
-                      value={companyForm.name} 
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="email" 
-                      type="email" 
-                      required 
-                      placeholder="Official Email *"
-                      value={companyForm.email}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="website" 
-                      type="url" 
-                      required 
-                      placeholder="Website URL *"
-                      value={companyForm.website}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="contact" 
-                      type="tel" 
-                      required 
-                      placeholder="Contact Number *"
-                      value={companyForm.contact}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="established" 
-                      type="number" 
-                      placeholder="Year Established"
-                      value={companyForm.established}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <select 
-                      name="coverage" 
-                      value={companyForm.coverage} 
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option>Global</option>
-                      <option>Asia-Pacific</option>
-                      <option>Europe</option>
-                      <option>Americas</option>
-                      <option>India-Specific</option>
-                    </select>
-                    <div className="flex gap-2">
-                      <input 
-                        name="maxCoverageAmount" 
-                        type="number" 
-                        placeholder="Max Coverage (Millions)"
-                        value={companyForm.maxCoverageAmount}
-                        onChange={handleFormChange}
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-2/3" 
-                      />
-                      <select 
-                        name="maxCoverageCurrency" 
-                        value={companyForm.maxCoverageCurrency} 
-                        onChange={handleFormChange}
-                        className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-1/3"
-                      >
-                        <option>USD</option>
-                        <option>EUR</option>
-                        <option>INR</option>
-                      </select>
-                    </div>
-                  </div>
-                  <textarea 
-                    name="description" 
-                    placeholder="Brief Company Description..."
-                    value={companyForm.description}
-                    onChange={handleFormChange}
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 mt-4 w-full" 
-                    rows="3"
-                  ></textarea>
-                </div>
 
-                <div>
-                  <h4 className="text-lg font-semibold text-blue-400 mb-4 border-b border-gray-700 pb-2">
-                    Services Offered
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Cargo Types Covered
-                      </label>
-                      <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-gray-900 rounded-md">
-                        {cargoTypes.map(type => (
-                          <label key={type} className="flex items-center space-x-2 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              value={type} 
-                              checked={companyForm.cargoTypes.includes(type)} 
-                              onChange={handleCargoTypeChange}
-                              className="h-4 w-4 bg-gray-700 border-gray-600 rounded text-blue-500 focus:ring-blue-500" 
-                            />
-                            <span className="text-sm text-gray-300">{type}</span>
-                          </label>
-                        ))}
+              <form onSubmit={handleAddCompany} className="flex-grow overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${formStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'}`}>1</div>
+                          <div className={`h-1 w-16 transition-all ${formStep > 1 ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${formStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'}`}>2</div>
+                          <div className={`h-1 w-16 transition-all ${formStep > 2 ? 'bg-blue-600' : 'bg-gray-700'}`}></div>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${formStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'}`}>3</div>
                       </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Shipment Methods
-                      </label>
-                      <div className="space-y-2">
-                        {shipmentTypes.map(type => (
-                          <label key={type.value} className="flex items-center space-x-2 cursor-pointer">
-                            <input 
-                              type="checkbox" 
-                              value={type.value} 
-                              checked={companyForm.shipmentTypes.includes(type.value)} 
-                              onChange={handleShipmentTypeChange}
-                              className="h-4 w-4 bg-gray-700 border-gray-600 rounded text-blue-500 focus:ring-blue-500" 
-                            />
-                            <type.icon className={`h-4 w-4 ${type.color}`} />
-                            <span className="text-sm text-gray-300">{type.value}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Popular Routes
-                      </label>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Mumbai-Dubai"
-                          value={currentRoute}
-                          onChange={(e) => setCurrentRoute(e.target.value)}
-                          className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 flex-grow" 
-                        />
-                        <motion.button 
-                          type="button" 
-                          onClick={handleAddRoute}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                        >
-                          Add
-                        </motion.button>
-                      </div>
-                      <div className="mt-2 space-y-1 max-h-36 overflow-y-auto">
-                        {companyForm.routes.map(route => (
-                          <div key={route} className="flex items-center justify-between bg-gray-700 px-3 py-1 rounded">
-                            <span className="text-sm text-gray-300">{route}</span>
-                            <motion.button 
-                              type="button" 
-                              onClick={() => handleRemoveRoute(route)}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                              className="text-red-400 hover:text-red-300"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </motion.button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                      <span className="text-sm text-gray-400">Step {formStep} of 3</span>
                   </div>
-                </div>
 
-                <div>
-                  <h4 className="text-lg font-semibold text-blue-400 mb-4 border-b border-gray-700 pb-2">
-                    Your Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input 
-                      name="submitterName" 
-                      type="text" 
-                      required 
-                      placeholder="Your Full Name *"
-                      value={companyForm.submitterName}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="submitterEmail" 
-                      type="email" 
-                      required 
-                      placeholder="Your Email *"
-                      value={companyForm.submitterEmail}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="submitterPhone" 
-                      type="tel" 
-                      placeholder="Your Phone"
-                      value={companyForm.submitterPhone}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <input 
-                      name="submitterDesignation" 
-                      type="text" 
-                      placeholder="Your Designation"
-                      value={companyForm.submitterDesignation}
-                      onChange={handleFormChange}
-                      className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                  </div>
-                </div>
+                  <AnimatePresence mode="wait">
+                      {formStep === 1 && (
+                          <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                              <div className="flex items-center space-x-3 mb-6">
+                                  <div className="p-2 bg-blue-600 rounded-lg"><Building className="h-5 w-5 text-white" /></div>
+                                  <div>
+                                      <h4 className="text-lg font-semibold text-white">Company Information</h4>
+                                      <p className="text-sm text-gray-400">Basic details about your insurance company</p>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Legal Company Name <span className="text-red-400">*</span></label>
+                                      <input name="name" type="text" placeholder="e.g., Global Shield Insurance Ltd." value={companyForm.name} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                      {formErrors.name && <p className="text-red-400 text-xs mt-1">{formErrors.name}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Official Email Address <span className="text-red-400">*</span></label>
+                                      <input name="email" type="email" placeholder="contact@yourcompany.com" value={companyForm.email} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white"/>
+                                      {formErrors.email && <p className="text-red-400 text-xs mt-1">{formErrors.email}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Company Website <span className="text-red-400">*</span></label>
+                                      <input name="website" type="url" placeholder="https://www.yourcompany.com" value={companyForm.website} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white"/>
+                                      {formErrors.website && <p className="text-red-400 text-xs mt-1">{formErrors.website}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Primary Contact Number <span className="text-red-400">*</span></label>
+                                      <input name="contact" type="tel" placeholder="+91-XXX-XXXXXXX" value={companyForm.contact} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white"/>
+                                      {formErrors.contact && <p className="text-red-400 text-xs mt-1">{formErrors.contact}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Year Established</label>
+                                      <input name="established" type="number" min="1900" max={new Date().getFullYear()} placeholder="YYYY" value={companyForm.established} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Geographic Coverage <span className="text-red-400">*</span></label>
+                                      <select name="coverage" value={companyForm.coverage} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white">
+                                          <option value="Global">Global</option>
+                                          <option value="Asia-Pacific">Asia-Pacific</option>
+                                          <option value="Europe">Europe</option>
+                                          <option value="Americas">Americas</option>
+                                          <option value="India-Specific">India-Specific</option>
+                                      </select>
+                                  </div>
+                              </div>
+                              <div className="mt-6 bg-gray-900 rounded-lg p-4 border border-gray-700">
+                                  <label className="block text-sm font-medium text-gray-300 mb-2">Maximum Coverage Limit <span className="text-red-400">*</span></label>
+                                  <div className="flex gap-3">
+                                      <input name="maxCoverageAmount" type="number" min="1" step="0.1" placeholder="e.g., 50" value={companyForm.maxCoverageAmount} onChange={handleFormChange} className="flex-1 px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                      <select name="maxCoverageCurrency" value={companyForm.maxCoverageCurrency} onChange={handleFormChange} className="px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white w-32">
+                                          <option value="USD">USD</option>
+                                          <option value="EUR">EUR</option>
+                                          <option value="INR">INR</option>
+                                      </select>
+                                  </div>
+                                  {formErrors.maxCoverageAmount && <p className="text-red-400 text-xs mt-1">{formErrors.maxCoverageAmount}</p>}
+                                  <p className="text-xs text-gray-500 mt-2">Enter amount in millions (e.g., 50 for $50M)</p>
+                              </div>
+                          </motion.div>
+                      )}
 
-                <div className="flex justify-end space-x-4 pt-4 border-t border-gray-700">
-                  <motion.button 
-                    type="button" 
-                    onClick={() => setShowAddCompanyForm(false)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </motion.button>
-                  <motion.button 
-                    type="submit"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white rounded-lg transition-colors font-semibold"
-                  >
-                    Submit & Proceed to Pay ₹15,000
-                  </motion.button>
+                      {formStep === 2 && (
+                          <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-8">
+                              <div className="flex items-center space-x-3 mb-6">
+                                  <div className="p-2 bg-purple-600 rounded-lg"><Zap className="h-5 w-5 text-white" /></div>
+                                  <div>
+                                      <h4 className="text-lg font-semibold text-white">Service Details</h4>
+                                      <p className="text-sm text-gray-400">Specify the services your company offers</p>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Cargo Types Covered <span className="text-red-400">*</span></label>
+                                      <div className="space-y-2 max-h-48 overflow-y-auto p-3 bg-gray-900 rounded-md border border-gray-700">
+                                          {cargoTypes.map(type => (
+                                              <label key={type} className="flex items-center space-x-2 cursor-pointer">
+                                                  <input type="checkbox" value={type} checked={companyForm.cargoTypes.includes(type)} onChange={(e) => handleMultiSelectChange(e, 'cargoTypes')} className="h-4 w-4 bg-gray-700 border-gray-600 rounded text-blue-500" />
+                                                  <span className="text-sm text-gray-300">{type}</span>
+                                              </label>
+                                          ))}
+                                      </div>
+                                      {formErrors.cargoTypes && <p className="text-red-400 text-xs mt-1">{formErrors.cargoTypes}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Shipment Methods <span className="text-red-400">*</span></label>
+                                      <div className="space-y-2 p-3 bg-gray-900 rounded-md border border-gray-700">
+                                          {shipmentTypes.map(type => (
+                                              <label key={type.value} className="flex items-center space-x-2 cursor-pointer">
+                                                  <input type="checkbox" value={type.value} checked={companyForm.shipmentTypes.includes(type.value)} onChange={(e) => handleMultiSelectChange(e, 'shipmentTypes')} className="h-4 w-4 bg-gray-700 border-gray-600 rounded text-blue-500" />
+                                                  <type.icon className={`h-4 w-4 ${type.color}`} />
+                                                  <span className="text-sm text-gray-300">{type.value}</span>
+                                              </label>
+                                          ))}
+                                      </div>
+                                      {formErrors.shipmentTypes && <p className="text-red-400 text-xs mt-1">{formErrors.shipmentTypes}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Popular Routes <span className="text-red-400">*</span></label>
+                                      <div className="flex gap-2">
+                                          <input type="text" placeholder="e.g., Mumbai-Dubai" value={currentRoute} onChange={(e) => setCurrentRoute(e.target.value)} className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg flex-grow" />
+                                          <motion.button type="button" onClick={handleAddRoute} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg">Add</motion.button>
+                                      </div>
+                                      <div className="mt-2 space-y-1 max-h-36 overflow-y-auto p-2 bg-gray-900 rounded-md border border-gray-700">
+                                          {companyForm.routes.map(route => (
+                                              <div key={route} className="flex items-center justify-between bg-gray-700 px-3 py-1 rounded">
+                                                  <span className="text-sm text-gray-300">{route}</span>
+                                                  <motion.button type="button" onClick={() => handleRemoveRoute(route)} whileHover={{ scale: 1.1 }} className="text-red-400"><XCircle className="h-4 w-4" /></motion.button>
+                                              </div>
+                                          ))}
+                                      </div>
+                                      {formErrors.routes && <p className="text-red-400 text-xs mt-1">{formErrors.routes}</p>}
+                                  </div>
+                              </div>
+                          </motion.div>
+                      )}
+
+                      {formStep === 3 && (
+                          <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                              <div className="flex items-center space-x-3 mb-6">
+                                  <div className="p-2 bg-green-600 rounded-lg"><User className="h-5 w-5 text-white" /></div>
+                                  <div>
+                                      <h4 className="text-lg font-semibold text-white">Submitter Information</h4>
+                                      <p className="text-sm text-gray-400">Contact person details for verification</p>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Your Full Name <span className="text-red-400">*</span></label>
+                                      <input name="submitterName" type="text" placeholder="e.g., Jane Doe" value={companyForm.submitterName} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                      {formErrors.submitterName && <p className="text-red-400 text-xs mt-1">{formErrors.submitterName}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Your Email Address <span className="text-red-400">*</span></label>
+                                      <input name="submitterEmail" type="email" placeholder="your.email@company.com" value={companyForm.submitterEmail} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                      {formErrors.submitterEmail && <p className="text-red-400 text-xs mt-1">{formErrors.submitterEmail}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Your Phone Number <span className="text-red-400">*</span></label>
+                                      <input name="submitterPhone" type="tel" placeholder="+91-XXX-XXXXXXX" value={companyForm.submitterPhone} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                      {formErrors.submitterPhone && <p className="text-red-400 text-xs mt-1">{formErrors.submitterPhone}</p>}
+                                  </div>
+                                  <div>
+                                      <label className="block text-sm font-medium text-gray-300 mb-2">Your Designation</label>
+                                      <input name="submitterDesignation" type="text" placeholder="e.g., Marketing Manager" value={companyForm.submitterDesignation} onChange={handleFormChange} className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white" />
+                                  </div>
+                              </div>
+                              <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-blue-500/50 text-center">
+                                <h3 className="text-lg font-semibold text-white">Final Step</h3>
+                                <p className="text-gray-400 mt-2">
+                                  By clicking 'Submit & Pay', you agree to our terms and conditions and your company will be added to our list for review.
+                                </p>
+                              </div>
+                          </motion.div>
+                      )}
+                  </AnimatePresence>
+                </div>
+                
+                <div className="p-6 border-t border-gray-700 mt-auto bg-gray-800 rounded-b-xl">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            {formStep > 1 && (
+                                <motion.button type="button" onClick={handlePrevStep} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex items-center space-x-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold">
+                                  <ArrowLeft className="h-5 w-5"/>
+                                  <span>Back</span>
+                                </motion.button>
+                            )}
+                        </div>
+                        <div>
+                            {formStep < 3 && (
+                                <motion.button type="button" onClick={handleNextStep} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="flex items-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold">
+                                  <span>Next</span>
+                                  <ArrowRight className="h-5 w-5"/>
+                                </motion.button>
+                            )}
+                            {formStep === 3 && (
+                                <motion.button type="submit" disabled={isSubmitting} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isSubmitting ? 'Submitting...' : 'Submit & Pay ₹15,000'}
+                                </motion.button>
+                            )}
+                        </div>
+                    </div>
                 </div>
               </form>
             </motion.div>
@@ -2059,7 +1735,6 @@ function SurakshitSafar() {
         )}
       </AnimatePresence>
 
-      {/* Admin Login Modal */}
       <AnimatePresence>
         {showAdminLogin && (
           <motion.div
@@ -2109,12 +1784,10 @@ function SurakshitSafar() {
                 />
                 
                 <div className="text-xs text-gray-400 bg-gray-700 p-3 rounded-lg">
-                  <p><strong>Default Credentials:</strong></p>
-                  <p>Username: admin | Password: AdminPass123!</p>
-                  <p className="text-yellow-400 mt-2">Change passwords in production!</p>
+                  <p><strong>Demo:</strong> admin / AdminPass123!</p>
                 </div>
                 
-                <div className="flex justify-end space-x-4">
+                <div className="flex justify-end space-x-4 pt-2">
                   <motion.button 
                     type="button" 
                     onClick={() => setShowAdminLogin(false)}
@@ -2139,7 +1812,6 @@ function SurakshitSafar() {
         )}
       </AnimatePresence>
 
-      {/* Company Details Modal */}
       <AnimatePresence>
         {selectedCompany && (
           <motion.div
@@ -2266,10 +1938,7 @@ function SurakshitSafar() {
                 <motion.button 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { 
-                    handleApproveCompany(selectedCompany.id); 
-                    setSelectedCompany(null); 
-                  }} 
+                  onClick={() => handleApproveCompany(selectedCompany.id)} 
                   className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-colors"
                 >
                   Approve Company
@@ -2277,10 +1946,7 @@ function SurakshitSafar() {
                 <motion.button 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { 
-                    handleRejectCompany(selectedCompany.id); 
-                    setSelectedCompany(null); 
-                  }} 
+                  onClick={() => handleRejectCompany(selectedCompany.id)} 
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg font-medium transition-colors"
                 >
                   Reject Company
@@ -2299,7 +1965,6 @@ function SurakshitSafar() {
         )}
       </AnimatePresence>
 
-      {/* Footer with Discreet Admin Access */}
       <footer className="bg-gray-900 border-t border-gray-800 py-8 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -2346,7 +2011,7 @@ function SurakshitSafar() {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-6 text-center">
-            <p className="text-gray-500 text-sm">© 2025 SurakshitSafar. All rights reserved.</p>
+            <p className="text-gray-500 text-sm">© {new Date().getFullYear()} SurakshitSafar. All rights reserved.</p>
           </div>
         </div>
       </footer>
