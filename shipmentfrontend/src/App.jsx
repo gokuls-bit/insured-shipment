@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Globe, Plus, Building, Truck, Train, Ship, Plane, MapPin, ExternalLink,
@@ -38,7 +38,6 @@ const countryPortData = {
   "Canada": ["Vancouver", "Montreal", "Halifax"]
 };
 
-
 const cargoTypes = [
   "Electronics", "Textiles", "Machinery", "Chemicals", "Automotive",
   "Food Products", "Pharmaceuticals", "Oil & Gas", "Raw Materials",
@@ -54,6 +53,79 @@ const shipmentTypes = [
 ];
 
 // ============================================================================
+// MOCK DATA GENERATION
+// ============================================================================
+
+const generateMockCompaniesForRoute = (departure, arrival, cargoType, transportMode) => {
+  const yourCompany = {
+    id: "your-company-premium",
+    name: "SecureCargo Insurance Ltd.",
+    coverage: "Global Premium",
+    rating: "4.9",
+    maxCoverage: "$50M USD",
+    claimSettlement: "98%",
+    pricing: "₹2,50,000 - ₹5,00,000",
+    serviceTier: "Premium Plus",
+    highlight: true,
+    verified: true,
+    website: "https://www.securecargo.com",
+    contact: "+91-555-1234",
+    email: "contact@securecargo.com",
+    shipmentTypes: [transportMode],
+    cargoTypes: [cargoType],
+    description: "Industry-leading comprehensive coverage with 24/7 claims support and instant quote generation",
+    established: 1995,
+    routes: [`${departure} - ${arrival}`]
+  };
+
+  const otherCompanies = [
+    {
+      id: `comp-${Date.now()}-1`,
+      name: "Global Shield Maritime",
+      coverage: "Worldwide",
+      rating: "4.7",
+      maxCoverage: "$35M USD",
+      claimSettlement: "95%",
+      pricing: "₹2,00,000 - ₹4,50,000",
+      serviceTier: "Premium",
+      highlight: false,
+      verified: true,
+      website: "https://www.globalshield.com",
+      contact: "+91-555-2345",
+      email: "info@globalshield.com",
+      shipmentTypes: [transportMode],
+      cargoTypes: [cargoType],
+      description: "Trusted maritime insurance provider with extensive network coverage",
+      established: 2001,
+      routes: [`${departure} - ${arrival}`]
+    },
+    {
+      id: `comp-${Date.now()}-2`,
+      name: "TransitGuard Solutions",
+      coverage: "Asia-Pacific",
+      rating: "4.5",
+      maxCoverage: "$25M USD",
+      claimSettlement: "92%",
+      pricing: "₹1,50,000 - ₹3,50,000",
+      serviceTier: "Standard",
+      highlight: false,
+      verified: true,
+      website: "https://www.transitguard.com",
+      contact: "+91-555-3456",
+      email: "support@transitguard.com",
+      shipmentTypes: [transportMode],
+      cargoTypes: [cargoType],
+      description: "Regional specialist with competitive rates and fast claim processing",
+      established: 2008,
+      routes: [`${departure} - ${arrival}`]
+    },
+  ];
+
+  return [yourCompany, ...otherCompanies];
+};
+
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -62,10 +134,12 @@ function SurakshitSafar() {
   // STATE MANAGEMENT
   // ----------------------------------------------------------------------------
   
+  // View & Auth State
   const [currentView, setCurrentView] = useState("home");
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
   
+  // Search State
   const [departureCountry, setDepartureCountry] = useState("");
   const [arrivalCountry, setArrivalCountry] = useState("");
   const [departurePort, setDeparturePort] = useState("");
@@ -75,54 +149,71 @@ function SurakshitSafar() {
   const [selectedCargoType, setSelectedCargoType] = useState("");
   const [selectedShipmentType, setSelectedShipmentType] = useState("");
   
+  // Results State
+  const [mockCompanies, setMockCompanies] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [companies, setCompanies] = useState([]);
-  const [sortOption, setSortOption] = useState("default");
   
+  // Modal State
   const [showAddCompanyForm, setShowAddCompanyForm] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Admin State
   const [adminTab, setAdminTab] = useState("dashboard");
-  const [adminFilters, setAdminFilters] = useState({ status: "all", paymentStatus: "all", search: "" });
+  const [adminFilters, setAdminFilters] = useState({
+    status: "all",
+    paymentStatus: "all",
+    search: ""
+  });
   
+  // Form State
   const initialFormState = {
-    name: "", website: "", contact: "", email: "", description: "", established: "",
-    routes: [], cargoTypes: [], shipmentTypes: [], coverage: "Global",
-    maxCoverageAmount: "", maxCoverageCurrency: "USD",
-    submitterName: "", submitterEmail: "", submitterPhone: "", submitterDesignation: ""
+    name: "", website: "", contact: "", email: "", description: "",
+    established: "", routes: [], cargoTypes: [],
+    shipmentTypes: [], coverage: "Global", maxCoverageAmount: "",
+    maxCoverageCurrency: "USD", submitterName: "", submitterEmail: "",
+    submitterPhone: "", submitterDesignation: ""
   };
+
   const [companyForm, setCompanyForm] = useState(initialFormState);
   const [currentRoute, setCurrentRoute] = useState("");
   const [adminCredentials, setAdminCredentials] = useState({ username: "", password: "" });
   const [formStep, setFormStep] = useState(1);
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState(null);
+
 
   // ----------------------------------------------------------------------------
   // EFFECTS
   // ----------------------------------------------------------------------------
   
   useEffect(() => {
-    loadCompaniesFromDB();
+    // loadCompaniesFromDB(); // We won't load from a fake DB on start anymore
     checkAdminAuth();
   }, []);
 
-  useEffect(() => { if (departureCountry) setShowDeparturePorts(true); }, [departureCountry]);
-  useEffect(() => { if (arrivalCountry) setShowArrivalPorts(true); }, [arrivalCountry]);
-  useEffect(() => { if (!showAddCompanyForm) { setCompanyForm(initialFormState); setFormStep(1); setFormErrors({}); setIsSubmitting(false); }}, [showAddCompanyForm]);
+  useEffect(() => {
+    if (departureCountry) setShowDeparturePorts(true);
+  }, [departureCountry]);
 
   useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(timer);
+    if (arrivalCountry) setShowArrivalPorts(true);
+  }, [arrivalCountry]);
+
+  // Reset form when modal is closed
+  useEffect(() => {
+    if (!showAddCompanyForm) {
+      setCompanyForm(initialFormState);
+      setFormStep(1);
+      setFormErrors({});
+      setIsSubmitting(false);
     }
-  }, [toast]);
+  }, [showAddCompanyForm]);
 
   // ----------------------------------------------------------------------------
-  // API FUNCTIONS
+  // API FUNCTIONS (Now Mocked or Safe-failing)
   // ----------------------------------------------------------------------------
   
   const checkAdminAuth = () => {
@@ -134,50 +225,15 @@ function SurakshitSafar() {
   };
 
   const loadCompaniesFromDB = async () => {
-    try {
-      const token = localStorage.getItem('adminToken');
-      const endpoint = token ? `${API_URL}/companies/all` : `${API_URL}/companies/approved`;
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const response = await fetch(endpoint, { headers });
-      if (!response.ok) throw new Error('Failed to fetch companies. Make sure your backend server is running.');
-      const data = await response.json();
-      const formattedCompanies = data.map(c => ({
-        ...c, id: c._id || c.id,
-        clicks: c.analytics?.clicks || 0, 
-        views: c.analytics?.views || 0,
-        quotes: c.analytics?.quotes || 0,
-        maxCoverage: `${c.maxCoverage?.amount || 0}M ${c.maxCoverage?.currency || 'USD'}`,
-        rating: c.rating || (Math.random() * (4.9 - 4.0) + 4.0).toFixed(1),
-        claimSettlement: c.claimSettlement || Math.floor(Math.random() * (98 - 90) + 90) + "%",
-        pricing: c.pricing || "Contact for Price",
-        serviceTier: c.serviceTier || "Standard",
-        highlight: c.highlight || false,
-        verified: c.status === 'approved' || false,
-        submittedAt: c.createdAt || new Date().toISOString()
-      }));
-      setCompanies(formattedCompanies);
-    } catch (error) {
-      console.error('Error loading companies:', error.message);
-      setToast({ message: error.message, type: 'error' });
-      setCompanies([]);
-    }
+    // This function is kept for when you connect to a real backend.
+    console.log("Skipping DB load in mock environment.");
   };
-  
-  const handleCompanyClick = async (company) => {
+
+  const handleCompanyClick = (company) => {
+    console.log("Tracked click for:", company.name);
     setCompanies(prev => prev.map(c => 
       c.id === company.id ? {...c, clicks: (c.clicks || 0) + 1} : c
     ));
-    try {
-      const token = localStorage.getItem('adminToken');
-      if (token && company.id) {
-        await fetch(`${API_URL}/companies/${company.id}/analytics/click`, {
-          method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-      }
-    } catch (error) {
-      console.error('Error tracking click:', error);
-    }
   };
 
   // ----------------------------------------------------------------------------
@@ -186,46 +242,72 @@ function SurakshitSafar() {
   
   const handleSearch = () => {
     if (departurePort && arrivalPort && selectedCargoType && selectedShipmentType) {
+      const foundCompanies = generateMockCompaniesForRoute(
+        departurePort,
+        arrivalPort,
+        selectedCargoType,
+        selectedShipmentType
+      );
+      // Also include companies from our state that match the route
+      const stateCompanies = companies.filter(c => c.routes.includes(`${departurePort} - ${arrivalPort}`));
+      setMockCompanies([...foundCompanies, ...stateCompanies]);
       setShowResults(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setToast({ message: "Please select all search fields.", type: 'error' });
+      alert("Please select all fields: Departure Port, Arrival Port, Cargo Type, and Transport Mode");
     }
   };
 
   const handleNewSearch = () => {
     setShowResults(false);
-    setDepartureCountry(""); setArrivalCountry(""); setDeparturePort("");
-    setArrivalPort(""); setSelectedCargoType(""); setSelectedShipmentType("");
-    setShowDeparturePorts(false); setShowArrivalPorts(false);
+    setMockCompanies([]);
+    setDepartureCountry("");
+    setArrivalCountry("");
+    setDeparturePort("");
+    setArrivalPort("");
+    setSelectedCargoType("");
+    setSelectedShipmentType("");
+    setShowDeparturePorts(false);
+    setShowArrivalPorts(false);
   };
-  
+
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setCompanyForm(prev => ({ ...prev, [name]: value }));
-    if (formErrors[name]) setFormErrors(prev => ({ ...prev, [name]: null }));
+    if (formErrors[name]) {
+        setFormErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
   
   const handleMultiSelectChange = (e, field) => {
     const { value, checked } = e.target;
     setCompanyForm(prev => {
         const currentValues = prev[field];
-        const newValues = checked ? [...currentValues, value] : currentValues.filter(item => item !== value);
+        const newValues = checked
+            ? [...currentValues, value]
+            : currentValues.filter(item => item !== value);
         return { ...prev, [field]: newValues };
     });
-    if (formErrors[field]) setFormErrors(prev => ({ ...prev, [field]: null }));
+    if (formErrors[field]) {
+        setFormErrors(prev => ({ ...prev, [field]: null }));
+    }
   };
 
   const handleAddRoute = () => {
     if (currentRoute && !companyForm.routes.includes(currentRoute)) {
       setCompanyForm(prev => ({ ...prev, routes: [...prev.routes, currentRoute] }));
       setCurrentRoute("");
-      if (formErrors.routes) setFormErrors(prev => ({ ...prev, routes: null }));
+      if (formErrors.routes) {
+        setFormErrors(prev => ({ ...prev, routes: null }));
+      }
     }
   };
 
   const handleRemoveRoute = (routeToRemove) => {
-    setCompanyForm(prev => ({ ...prev, routes: prev.routes.filter(route => route !== routeToRemove) }));
+    setCompanyForm(prev => ({ 
+      ...prev, 
+      routes: prev.routes.filter(route => route !== routeToRemove) 
+    }));
   };
   
   const validateStep = (step) => {
@@ -239,162 +321,155 @@ function SurakshitSafar() {
         if (!contact.trim() || contact.length < 10) errors.contact = "A valid primary contact number is required.";
         if (!maxCoverageAmount) errors.maxCoverageAmount = "Max coverage amount is required.";
     }
+
     if (step === 2) {
         if (routes.length === 0) errors.routes = "Please add at least one popular route.";
         if (shipmentTypes.length === 0) errors.shipmentTypes = "Please select at least one shipment method.";
         if (cargoTypes.length === 0) errors.cargoTypes = "Please select at least one cargo type.";
     }
+    
     if (step === 3) {
         if (!submitterName.trim()) errors.submitterName = "Submitter's name is required.";
         if (!submitterEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail)) errors.submitterEmail = "A valid submitter email is required.";
         if (!submitterPhone.trim() || submitterPhone.length < 10) errors.submitterPhone = "A valid submitter phone number is required.";
     }
+
     return errors;
   };
 
   const handleNextStep = () => {
       const errors = validateStep(formStep);
-      if (Object.keys(errors).length > 0) setFormErrors(errors);
-      else { setFormErrors({}); setFormStep(prev => prev + 1); }
+      if (Object.keys(errors).length > 0) {
+          setFormErrors(errors);
+      } else {
+          setFormErrors({});
+          setFormStep(prev => prev + 1);
+      }
   };
 
-  const handlePrevStep = () => setFormStep(prev => prev - 1);
+  const handlePrevStep = () => {
+      setFormStep(prev => prev - 1);
+  };
 
+  // --- [UPDATED] MOCK SUBMISSION FUNCTION ---
   const handleAddCompany = async (e) => {
     e.preventDefault();
     const finalErrors = validateStep(3);
-    if (Object.keys(finalErrors).length > 0) { setFormErrors(finalErrors); return; }
+    if (Object.keys(finalErrors).length > 0) {
+        setFormErrors(finalErrors);
+        return;
+    }
     
     setIsSubmitting(true);
+
     try {
-      const response = await fetch(`${API_URL}/companies/submit`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...companyForm,
-          maxCoverage: {
-            amount: parseFloat(companyForm.maxCoverageAmount) || 10,
-            currency: companyForm.maxCoverageCurrency,
-          },
-          established: parseInt(companyForm.established, 10) || null,
-          submittedBy: {
-            name: companyForm.submitterName, email: companyForm.submitterEmail,
-            phone: companyForm.submitterPhone, designation: companyForm.submitterDesignation || "N/A"
-          }
-        }),
-      });
-      
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Submission failed.");
-      
-      setToast({ message: `Company "${companyForm.name}" submitted successfully!`, type: 'success' });
+      // --- MOCK API & PAYMENT LOGIC ---
+      console.log("Submitting mock data:", { ...companyForm });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      // --- END OF MOCK LOGIC ---
+
+      alert(`Company "${companyForm.name}" submitted successfully! (This is a mock response)`);
+
+      // Create a new company object to add to the state
+      const newCompany = {
+        id: `new-${Date.now()}`,
+        name: companyForm.name,
+        email: companyForm.email,
+        website: companyForm.website,
+        contact: companyForm.contact,
+        coverage: companyForm.coverage,
+        maxCoverage: `${companyForm.maxCoverageAmount}M ${companyForm.maxCoverageCurrency}`,
+        description: companyForm.description,
+        established: companyForm.established,
+        routes: companyForm.routes,
+        cargoTypes: companyForm.cargoTypes,
+        shipmentTypes: companyForm.shipmentTypes,
+        submittedBy: {
+          name: companyForm.submitterName,
+          email: companyForm.submitterEmail,
+          phone: companyForm.submitterPhone,
+          designation: companyForm.submitterDesignation || "N/A"
+        },
+        status: 'pending',
+        paymentStatus: 'completed',
+        rating: 'N/A',
+        claimSettlement: 'N/A',
+        pricing: 'Pending Review',
+        serviceTier: 'Standard',
+        highlight: false,
+        verified: false,
+        clicks: 0,
+        views: 0,
+        quotes: 0,
+        submittedAt: new Date().toISOString(),
+      };
+
+      // Add the new company to the top of the companies list in the state
+      setCompanies(prevCompanies => [newCompany, ...prevCompanies]);
+
       setShowAddCompanyForm(false);
-      loadCompaniesFromDB();
+
     } catch (error) {
-      console.error('Error submitting company:', error);
-      setToast({ message: `Submission failed: ${error.message}`, type: 'error' });
+      console.error('Error during mock submission:', error);
+      alert(`An unexpected error occurred.`);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  const handleAdminLogin = async (e) => {
+
+  const handleAdminLogin = (e) => {
     e.preventDefault();
-    try {
-      const response = await fetch(`${API_URL}/admin/login`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(adminCredentials)
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        localStorage.setItem('adminToken', data.token);
-        setIsAdminLoggedIn(true); setAdminUser(data.admin); setCurrentView("admin");
-        setShowAdminLogin(false); setAdminCredentials({ username: "", password: "" });
-        loadCompaniesFromDB();
-        setToast({ message: 'Admin login successful!', type: 'success' });
-      } else {
-        throw new Error(data.message || "Invalid credentials");
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      setToast({ message: error.message, type: 'error' });
-    }
-  };
-  
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken');
-    setIsAdminLoggedIn(false); setAdminUser(null); setCurrentView("home");
-    setAdminTab("dashboard"); loadCompaniesFromDB();
-    setToast({ message: 'You have been logged out.', type: 'info' });
-  };
-  
-  const handleApproveCompany = async (companyId) => {
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/companies/${companyId}/approve`, {
-        method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Failed to approve company');
-      setToast({ message: "Company approved successfully!", type: 'success' });
-      loadCompaniesFromDB(); setSelectedCompany(null);
-    } catch (error) {
-      setToast({ message: `Error: ${error.message}`, type: 'error' });
-    }
-  };
-  
-  const handleRejectCompany = async (companyId) => {
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/companies/${companyId}/reject`, {
-        method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Failed to reject company');
-      setToast({ message: "Company rejected successfully!", type: 'info' });
-      loadCompaniesFromDB(); setSelectedCompany(null);
-    } catch (error) {
-      setToast({ message: `Error: ${error.message}`, type: 'error' });
+    if (adminCredentials.username === "admin" && adminCredentials.password === "AdminPass123!") {
+      localStorage.setItem('adminToken', 'demo-token');
+      setIsAdminLoggedIn(true);
+      setAdminUser({ username: "admin", email: "admin@surakshitsafar.com", role: "super_admin" });
+      setCurrentView("admin");
+      setShowAdminLogin(false);
+      setAdminCredentials({ username: "", password: "" });
+    } else {
+      alert("Invalid credentials. Use admin / AdminPass123!");
     }
   };
 
-  const handleDeleteCompany = async (companyId) => {
-    if (!window.confirm("Are you sure?")) return;
-    try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${API_URL}/companies/${companyId}`, {
-        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Failed to delete company');
-      setToast({ message: "Company deleted successfully!", type: 'success' });
-      loadCompaniesFromDB();
-    } catch (error) {
-      setToast({ message: `Error: ${error.message}`, type: 'error' });
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('adminToken');
+    setIsAdminLoggedIn(false);
+    setAdminUser(null);
+    setCurrentView("home");
+    setAdminTab("dashboard");
+  };
+
+  // --- [UPDATED] ADMIN FUNCTIONS TO USE STATE ---
+  const handleApproveCompany = (companyId) => {
+    alert(`Company approved successfully! (Mock Action)`);
+    setCompanies(prev => prev.map(c =>
+      c.id === companyId ? {...c, status: "approved", verified: true} : c
+    ));
+    setSelectedCompany(null);
+  };
+
+  const handleRejectCompany = (companyId) => {
+    alert(`Company rejected! (Mock Action)`);
+    setCompanies(prev => prev.map(c =>
+      c.id === companyId ? {...c, status: "rejected"} : c
+    ));
+    setSelectedCompany(null);
+  };
+
+  const handleDeleteCompany = (companyId) => {
+    if (!window.confirm("Are you sure you want to delete this company?")) return;
+    setCompanies(prev => prev.filter(c => c.id !== companyId));
+    alert("Company deleted successfully! (Mock Action)");
   };
 
   // ----------------------------------------------------------------------------
   // COMPUTED VALUES
   // ----------------------------------------------------------------------------
   
-  const sortedAndFilteredCompanies = useMemo(() => {
-    const visibleCompanies = companies.filter(company => {
-      const isApproved = company.status === 'approved';
-      const routeMatch = !departurePort || !arrivalPort || company.routes.some(route => route.toLowerCase().includes(departurePort.toLowerCase()) && route.toLowerCase().includes(arrivalPort.toLowerCase()));
-      const cargoMatch = !selectedCargoType || company.cargoTypes.includes(selectedCargoType);
-      const shipmentMatch = !selectedShipmentType || company.shipmentTypes.includes(selectedShipmentType);
-      return isApproved && routeMatch && cargoMatch && shipmentMatch;
-    });
-
-    switch (sortOption) {
-      case 'rating': return [...visibleCompanies].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-      case 'coverage': return [...visibleCompanies].sort((a, b) => parseFloat(b.maxCoverage) - parseFloat(a.maxCoverage));
-      case 'claims': return [...visibleCompanies].sort((a, b) => parseFloat(b.claimSettlement) - parseFloat(a.claimSettlement));
-      default: return visibleCompanies;
-    }
-  }, [companies, departurePort, arrivalPort, selectedCargoType, selectedShipmentType, sortOption]);
-  
   const dashboardStats = {
     totalCompanies: companies.length,
     approvedCompanies: companies.filter(c => c.status === "approved").length,
-    pendingCompanies: companies.filter(c => c.status === "pending").length,
+    pendingCompanies: companies.filter(c => c.status === "pending" && c.paymentStatus === "completed").length,
     rejectedCompanies: companies.filter(c => c.status === "rejected").length,
     totalRevenue: companies.filter(c => c.paymentStatus === "completed").length * 15000,
     totalClicks: companies.reduce((sum, c) => sum + (c.clicks || 0), 0),
@@ -403,41 +478,37 @@ function SurakshitSafar() {
   };
 
   const getPendingCompanies = () => {
-    let filtered = companies.filter(c => c.status === "pending");
-    if (adminFilters.search) filtered = filtered.filter(c => c.name?.toLowerCase().includes(adminFilters.search.toLowerCase()));
+    let filtered = companies.filter(c => c.status === "pending" && c.paymentStatus === "completed");
+    if (adminFilters.search) {
+      filtered = filtered.filter(c => 
+        c.name?.toLowerCase().includes(adminFilters.search.toLowerCase())
+      );
+    }
     return filtered;
   };
 
   const getFilteredCompanies = () => {
     let filtered = companies;
-    if (adminFilters.status !== "all") filtered = filtered.filter(c => c.status === adminFilters.status);
-    if (adminFilters.paymentStatus !== "all") filtered = filtered.filter(c => c.paymentStatus === adminFilters.paymentStatus);
-    if (adminFilters.search) filtered = filtered.filter(c => c.name?.toLowerCase().includes(adminFilters.search.toLowerCase()));
+    if (adminFilters.status !== "all") {
+      filtered = filtered.filter(c => c.status === adminFilters.status);
+    }
+    if (adminFilters.paymentStatus !== "all") {
+      filtered = filtered.filter(c => c.paymentStatus === adminFilters.paymentStatus);
+    }
+    if (adminFilters.search) {
+      filtered = filtered.filter(c => 
+        c.name?.toLowerCase().includes(adminFilters.search.toLowerCase())
+      );
+    }
     return filtered;
   };
 
-  // ============================================================================
-  // NESTED COMPONENTS
-  // ============================================================================
+  // ... The rest of the components (CompanyCard, PortSelector, StatCard, AdminDashboard) remain unchanged ...
+  // ... They are included here for completeness ...
 
-  const Toast = ({ message, type, onClose }) => (
-    <motion.div
-      initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 100 }}
-      layout
-      className={`fixed top-5 right-5 z-[100] p-4 rounded-lg shadow-lg text-white max-w-sm ${
-        type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600'
-      }`}
-    >
-      <div className="flex items-center">
-        {type === 'success' && <CheckCircle className="mr-3 flex-shrink-0" />}
-        {type === 'error' && <AlertCircle className="mr-3 flex-shrink-0" />}
-        <p className="flex-grow">{message}</p>
-        <button onClick={onClose} className="ml-4 p-1 rounded-full hover:bg-white/20 flex-shrink-0">
-          <X size={18} />
-        </button>
-      </div>
-    </motion.div>
-  );
+  // ============================================================================
+  // COMPONENT DEFINITIONS
+  // ============================================================================
 
   const CompanyCard = ({ company, index }) => (
     <motion.div
@@ -480,7 +551,7 @@ function SurakshitSafar() {
                 <Globe className="h-4 w-4" />
                 <span className="text-sm font-medium">{company.coverage}</span>
                 {company.verified && (
-                  <CheckCircle className="h-4 w-4 text-green-300" title="Verified" />
+                  <CheckCircle className="h-4 w-4 text-green-300" />
                 )}
               </div>
             </div>
@@ -640,10 +711,21 @@ function SurakshitSafar() {
     </div>
   );
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <motion.div whileHover={{ scale: 1.02, y: -5 }} className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-lg">
+  const StatCard = ({ title, value, change, icon: Icon, color, trend }) => (
+    <motion.div 
+      whileHover={{ scale: 1.02, y: -5 }}
+      className="bg-gray-900 rounded-xl p-6 border border-gray-800 shadow-lg"
+    >
       <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-lg ${color}`}><Icon className="h-6 w-6 text-white" /></div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+        {change && (
+          <div className={`flex items-center space-x-1 text-sm ${trend === 'up' ? 'text-green-400' : 'text-red-400'}`}>
+            {trend === 'up' ? <ArrowUpRight className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+            <span>{change}%</span>
+          </div>
+        )}
       </div>
       <h3 className="text-2xl font-bold text-white mb-1">{value}</h3>
       <p className="text-gray-400 text-sm">{title}</p>
@@ -652,9 +734,6 @@ function SurakshitSafar() {
 
   const AdminDashboard = () => (
     <div className="min-h-screen bg-gray-950">
-      <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </AnimatePresence>
       <div className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40 backdrop-blur-sm bg-opacity-95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -1213,17 +1292,22 @@ function SurakshitSafar() {
       </div>
     </div>
   );
-  
+
+  // ============================================================================
+  // MAIN RENDER - ADMIN VIEW
+  // ============================================================================
+
   if (isAdminLoggedIn && currentView === "admin") {
     return <AdminDashboard />;
   }
 
+  // ============================================================================
+  // MAIN RENDER - PUBLIC VIEW
+  // ============================================================================
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </AnimatePresence>
-
+      {/* Navigation */}
       <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 backdrop-blur-sm bg-opacity-95">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -1441,34 +1525,22 @@ function SurakshitSafar() {
                     Mode: <span className="text-white font-semibold">{selectedShipmentType}</span>
                   </p>
                 </div>
-                <div className="flex items-center gap-4">
-                  <select value={sortOption} onChange={e => setSortOption(e.target.value)} className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
-                    <option value="default">Sort By</option>
-                    <option value="rating">Best Rating</option>
-                    <option value="coverage">Max Coverage</option>
-                    <option value="claims">Claim Settlement</option>
-                  </select>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleNewSearch}
-                    className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                    <span>New Search</span>
-                  </motion.button>
-                </div>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleNewSearch}
+                  className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center space-x-2"
+                >
+                  <ArrowRight className="h-5 w-5 rotate-180" />
+                  <span>New Search</span>
+                </motion.button>
               </div>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {sortedAndFilteredCompanies.length > 0 ? (
-                sortedAndFilteredCompanies.map((company, index) => (
-                  <CompanyCard key={company.id} company={company} index={index} />
-                ))
-              ) : (
-                <p className="text-center col-span-2 text-gray-400 py-12">No insurance providers found for the selected criteria.</p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+              {mockCompanies.map((company, index) => (
+                <CompanyCard key={company.id} company={company} index={index} />
+              ))}
             </div>
             
             <motion.div
@@ -1666,11 +1738,11 @@ function SurakshitSafar() {
                       {formStep === 3 && (
                           <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                               <div className="flex items-center space-x-3 mb-6">
-                                  <div className="p-2 bg-green-600 rounded-lg"><User className="h-5 w-5 text-white" /></div>
-                                  <div>
-                                      <h4 className="text-lg font-semibold text-white">Submitter Information</h4>
-                                      <p className="text-sm text-gray-400">Contact person details for verification</p>
-                                  </div>
+                                <div className="p-2 bg-green-600 rounded-lg"><User className="h-5 w-5 text-white" /></div>
+                                <div>
+                                    <h4 className="text-lg font-semibold text-white">Submitter Information</h4>
+                                    <p className="text-sm text-gray-400">Contact person details for verification</p>
+                                </div>
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   <div>
@@ -1696,7 +1768,7 @@ function SurakshitSafar() {
                               <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-blue-500/50 text-center">
                                 <h3 className="text-lg font-semibold text-white">Final Step</h3>
                                 <p className="text-gray-400 mt-2">
-                                  By clicking 'Submit & Pay', you agree to our terms and conditions and your company will be added to our list for review.
+                                    By clicking 'Submit & Pay', you agree to our terms and conditions and your company will be added to our list for review.
                                 </p>
                               </div>
                           </motion.div>
@@ -1784,10 +1856,11 @@ function SurakshitSafar() {
                 />
                 
                 <div className="text-xs text-gray-400 bg-gray-700 p-3 rounded-lg">
-                  <p><strong>Demo:</strong> admin / AdminPass123!</p>
+                  <p><strong>Demo Credentials:</strong></p>
+                  <p>Username: admin | Password: AdminPass123!</p>
                 </div>
                 
-                <div className="flex justify-end space-x-4 pt-2">
+                <div className="flex justify-end space-x-4">
                   <motion.button 
                     type="button" 
                     onClick={() => setShowAdminLogin(false)}

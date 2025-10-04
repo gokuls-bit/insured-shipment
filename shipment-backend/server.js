@@ -1,180 +1,224 @@
-// server.js - Main entry point
+// server.js — Shipment Insurance Management Backend (Redis Skipped Version)
+// ------------------------------------------------------------
+
+require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
 const helmet = require('helmet');
-const compression = require('compression');
+const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss-clean');
-
-// Load environment variables first
-dotenv.config();
-
-const app = express();
-
-// Import middleware and utilities
-const { errorHandler } = require('./src/middlewares/errorHandler');
-const { generalLimiter } = require('./src/middlewares/rateLimiter');
 const logger = require('./src/utils/logger');
+const routes = require('./src/routes');
+const { errorHandler, notFound } = require('./src/middlewares/errorMiddleware');
+const connectDB = require('./src/config/db');
 
-// Security Middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-    },
-  },
-  crossOriginEmbedderPolicy: false
-}));
+// ------------------------------------------------------------
+// Global Setup
+// ------------------------------------------------------------
+const app = express();
+const PORT = parseInt(process.env.PORT, 10) || 5000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+let server = null;
+let shuttingDown = false;
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+// ------------------------------------------------------------
+// Feature Status Object
+// ------------------------------------------------------------
+const features = {
+  database: { name: 'MongoDB', status: 'pending' },
+  redis: { name: 'Redis', status: 'skipped' }, // Redis skipped
+  routes: [],
+  services: [],
 };
 
-app.use(cors(corsOptions));
+// ------------------------------------------------------------
+// Logging Helpers
+// ------------------------------------------------------------
+const debug = (msg) => console.log(`[DEBUG] ${msg}`);
+const success = (msg) => console.log(`✅ ${msg}`);
+const info = (msg) => console.log(`📍 ${msg}`);
+const warn = (msg) => console.log(`⚠️ ${msg}`);
+const error = (msg) => console.error(`❌ ${msg}`);
 
-// Body parsing & security middleware
-app.use(compression());
+// ------------------------------------------------------------
+// Parse allowed CORS origins
+// ------------------------------------------------------------
+function parseOrigins(originsEnv) {
+  if (!originsEnv) return ['http://localhost:5173'];
+  return originsEnv.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+// ------------------------------------------------------------
+// Security & Rate Limiting
+// ------------------------------------------------------------
+const RATE_LIMIT_WINDOW_MIN = parseInt(process.env.RATE_LIMIT_WINDOW, 10) || 15;
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX, 10) || 100;
+
+app.use(helmet());
+app.use(cors({
+  origin: function (origin, callback) {
+    const whitelist = parseOrigins(process.env.CORS_ORIGINS);
+    if (!origin || whitelist.includes(origin)) callback(null, true);
+    else callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+}));
+
+app.use(rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MIN * 60 * 1000,
+  max: RATE_LIMIT_MAX,
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(mongoSanitize());
-app.use(xss());
 
-// Rate limiting
-app.use('/api', generalLimiter);
+// ------------------------------------------------------------
+// Request Logging
+// ------------------------------------------------------------
+app.use((req, res, next) => {
+  req.correlationId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  logger.info({
+    msg: 'incoming_request',
+    correlationId: req.correlationId,
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+    userAgent: req.get('user-agent') || null,
+  });
+  next();
+});
 
-// Database connection function
-const connectDB = async () => {
+// ------------------------------------------------------------
+// Health Check Endpoint
+// ------------------------------------------------------------
+app.get('/api/v1/health', async (req, res) => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/surakshitsafar', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    
-    console.log(`✅ Connected to MongoDB: ${conn.connection.host}`);
-    logger.info(`MongoDB Connected: ${conn.connection.host}`);
-    
-    // Seed admin after connection
-    const seedAdmin = require('./src/utils/seedAdmin');
-    await seedAdmin();
-  } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
-    logger.error('MongoDB connection error:', error);
-    process.exit(1);
+    const mongoose = require('mongoose');
+    const health = {
+      status: 'OK',
+      nodeEnv: NODE_ENV,
+      timestamp: new Date().toISOString(),
+      services: {
+        database: mongoose.connection?.readyState === 1 ? 'Connected' : 'Disconnected',
+        redis: 'skipped',
+      },
+    };
+    res.status(200).json(health);
+  } catch (err) {
+    logger.error('health_check_failed', { err });
+    res.status(503).json({ status: 'ERROR', message: 'Health check failed' });
   }
-};
-
-// Connect to database
-connectDB();
-
-// Health check endpoint (before routes)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    message: 'SurakshitSafar API is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
 });
 
-// API documentation endpoint
-app.get('/api', (req, res) => {
-  res.status(200).json({
-    message: 'Welcome to SurakshitSafar API',
-    version: '1.0.0',
-    endpoints: {
-      companies: '/api/companies',
-      admin: '/api/admin',
-      payments: '/api/payments',
-      health: '/api/health'
-    },
-    documentation: 'https://docs.surakshitsafar.com'
-  });
-});
+// ------------------------------------------------------------
+// Route Registration
+// ------------------------------------------------------------
+debug('Loading routes...');
+features.routes = [
+  '/api/companies',
+  '/api/admin',
+  '/api/payments',
+  '/api/shipments',
+  '/api/users',
+];
+features.routes.forEach((r) => debug(`Registering ${r} routes`));
 
-// Routes
-try {
-  app.use('/api/companies', require('./src/routes/companyRoutes'));
-  app.use('/api/admin', require('./src/routes/adminRoutes'));
-  app.use('/api/payments', require('./src/routes/paymentRoutes'));
-} catch (error) {
-  console.error('❌ Error loading routes:', error);
-  logger.error('Error loading routes:', error);
-}
+app.use('/api/v1', routes);
 
-// 404 handler
-app.use('*', (req, res) => {
-  logger.warn(`Route not found: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-    availableRoutes: ['/api/companies', '/api/admin', '/api/payments', '/api/health']
-  });
-});
-
-// Error handling middleware (should be last)
+app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+// ------------------------------------------------------------
+// Start Server Logic
+// ------------------------------------------------------------
+async function startServer() {
+  try {
+    debug('Initializing backend services...');
 
-// Graceful shutdown handlers
-process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    logger.info('Process terminated');
-    mongoose.connection.close(false, () => {
-      logger.info('MongoDB connection closed');
-      process.exit(0);
+    // 1️⃣ Connect MongoDB
+    debug('Connecting to MongoDB...');
+    await connectDB();
+    features.database.status = 'connected';
+    success(`Connected to MongoDB: ${process.env.MONGO_URI.split('@').pop() || 'localhost'}`);
+
+    // 2️⃣ Skip Redis
+    warn('Redis is skipped. Server will start without Redis.');
+
+    // 3️⃣ Start Express server
+    server = app.listen(PORT, () => {
+      console.log('--------------------------------------------------------');
+      console.log(`🚀 Server running on port ${PORT}`);
+      info(`Environment: ${NODE_ENV}`);
+      info(`API Health: http://localhost:${PORT}/api/v1/health`);
+      info(`API Docs:   http://localhost:${PORT}/api`);
+      console.log('--------------------------------------------------------');
+      logger.info(`Server started on port ${PORT}`);
     });
-  });
-});
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  mongoose.connection.close(false, () => {
-    logger.info('MongoDB connection closed');
-    process.exit(0);
-  });
-});
+    // Handle signals for graceful shutdown
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  logger.error('Uncaught Exception:', error);
-  process.exit(1);
-});
+    process.on('unhandledRejection', (reason) => {
+      logger.error('unhandledRejection', { reason });
+      gracefulShutdown(1, reason);
+    });
+    process.on('uncaughtException', (err) => {
+      logger.error('uncaughtException', { err });
+      gracefulShutdown(1, err);
+    });
+  } catch (err) {
+    error(`Startup failed: ${err.message}`);
+    logger.error('startup_failed', { err });
+    setTimeout(() => process.exit(1), 500);
+  }
+}
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
-  logger.error('Unhandled Rejection:', error);
-  process.exit(1);
-});
+// ------------------------------------------------------------
+// Graceful Shutdown Handler
+// ------------------------------------------------------------
+async function gracefulShutdown(exitCode = 0, err) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info('graceful_shutdown_initiated', { exitCode });
+  console.log('🛑 Graceful shutdown initiated...');
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📍 API Health: http://localhost:${PORT}/api/health`);
-  console.log(`📍 API Docs: http://localhost:${PORT}/api`);
-  logger.info(`Server started on port ${PORT}`);
-});
+  // Stop new connections
+  if (server && server.close) {
+    server.close(() => {
+      logger.info('http_server_closed');
+      console.log('✅ HTTP server closed');
+    });
+    setTimeout(() => {
+      warn('Forcing process exit after timeout...');
+      process.exit(exitCode);
+    }, 10000).unref();
+  }
 
-// Keep the process alive
-server.on('error', (error) => {
-  console.error('❌ Server error:', error);
-  logger.error('Server error:', error);
-  process.exit(1);
-});
+  // Close MongoDB
+  try {
+    const mongoose = require('mongoose');
+    if (mongoose.connection?.readyState === 1) {
+      await mongoose.disconnect();
+      success('MongoDB disconnected');
+    }
+  } catch (e) {
+    logger.error('error_disconnecting_mongoose', { e });
+  }
+
+  if (err) logger.error('shutdown_due_to_error', { err });
+  logger.info('shutdown_complete_exiting', { exitCode });
+  process.exit(exitCode);
+}
+
+// ------------------------------------------------------------
+// Kick off startup
+// ------------------------------------------------------------
+startServer();
 
 module.exports = app;

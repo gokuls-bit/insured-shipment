@@ -1,384 +1,227 @@
-// scripts/seedData.js
+// src/scripts/seed.js - Database Seed Script
+require('dotenv').config();
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const path = require('path');
-
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
-// Import models
-// Import models
-// Import models
-const Admin = require('../models/Admin');
+const User = require('../models/User');
 const Company = require('../models/Company');
-const PaymentLog = require('../models/PaymentLog');
+const Shipment = require('../models/Shipment');
+const { Policy } = require('../models/Policy');
 
-// Connect to database
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/surakshitsafar', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('Database connected for seeding');
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log('MongoDB Connected');
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error(`Error: ${error.message}`);
     process.exit(1);
   }
 };
 
-// Sample admin data
-const adminData = [
-  {
-    username: 'gokul',
-    email: 'gokul@surakshitsafar.com',
-    password: 'santji',
-    firstName: 'Gokul',
-    lastName: 'Administrator',
-    role: 'super_admin',
-    isActive: true,
-    isEmailVerified: true
-  },
-  {
-    username: 'moderator',
-    email: 'moderator@surakshitsafar.com',
-    password: 'ModeratorPass123!',
-    firstName: 'Content',
-    lastName: 'Moderator',
-    role: 'moderator',
-    isActive: true,
-    isEmailVerified: true
-  }
-];
-
-// Sample company data (FIXED)
-const companyData = [
-  {
-    name: "Global Marine Insurance Co.",
-    email: "contact@globalmarineins.com",
-    website: "https://globalmarineins.com",
-    contact: "+6562345678",   // FIXED
-    routes: ["Singapore-Mumbai", "Singapore-Chennai", "Singapore-Dubai"],
-    cargoTypes: ["Electronics", "Machinery", "Automotive"],
-    shipmentTypes: ["Ship", "Air"],
-    coverage: "Global",   // FIXED
-    maxCoverage: { amount: 5000000, currency: "USD" },
-    established: 2005,
-    rating: 4.8,
-    claimSettlementRate: "96%",
-    status: "approved",
-    verified: true,
-    paymentStatus: "completed",
-    submittedBy: {
-      name: "John Lim",
-      email: "john.lim@globalmarineins.com",
-      phone: "+6562345678",   // FIXED
-      designation: "Business Development Manager"
-    },
-    description: "Leading marine insurance provider in Southeast Asia with comprehensive coverage for international shipments.",
-    licenseNumber: "SGP-MAR-2005-001"
-  },
-  {
-    name: "EuroTrans Cargo Shield",
-    email: "info@eurotrans-cargo.de",
-    website: "https://eurotrans-cargo.de",
-    contact: "+493012345678",   // FIXED
-    routes: ["Hamburg-Mumbai", "Rotterdam-Chennai", "Frankfurt-Delhi"],
-    cargoTypes: ["Electronics", "Pharmaceuticals", "Textiles"],
-    shipmentTypes: ["Road", "Rail", "Air"],
-    coverage: "Global",   // FIXED
-    maxCoverage: { amount: 8000000, currency: "EUR" },
-    established: 1995,
-    rating: 4.7,
-    claimSettlementRate: "94%",
-    status: "approved",
-    verified: true,
-    paymentStatus: "completed",
-    submittedBy: {
-      name: "Klaus Mueller",
-      email: "k.mueller@eurotrans-cargo.de",
-      phone: "+493012345678",   // FIXED
-      designation: "Regional Director"
-    },
-    description: "Premier European cargo insurance specialist with extensive experience in Euro-Asian trade routes.",
-    licenseNumber: "DE-CARGO-1995-042"
-  },
-  {
-    name: "Pacific Freight Insurance",
-    email: "admin@pacificfreight.au",
-    website: "https://pacificfreight.au",
-    contact: "+61298765432",   // FIXED
-    routes: ["Sydney-Tokyo", "Melbourne-Seoul", "Brisbane-Shanghai"],
-    cargoTypes: ["Mining Equipment", "Agricultural Products", "Electronics"],
-    shipmentTypes: ["Ship", "Air"],
-    coverage: "Asia",   // FIXED (instead of Pacific Region)
-    maxCoverage: { amount: 6000000, currency: "AUD" },
-    established: 2008,
-    rating: 4.5,
-    claimSettlementRate: "92%",
-    status: "approved",
-    verified: true,
-    paymentStatus: "completed",
-    submittedBy: {
-      name: "Sarah Wilson",
-      email: "s.wilson@pacificfreight.au",
-      phone: "+61298765432",   // FIXED
-      designation: "Operations Manager"
-    },
-    description: "Australia's trusted partner for Pacific Rim cargo insurance with specialized mining equipment coverage.",
-    licenseNumber: "AU-PAC-2008-156"
-  },
-  {
-    name: "TransAtlantic Cargo Care",
-    email: "contact@transatlantic.com",
-    website: "https://transatlantic.com",
-    contact: "+15550199100",   // FIXED (made 11 digits to meet minLength)
-    routes: ["New York-London", "Los Angeles-Hamburg", "Miami-Barcelona"],
-    cargoTypes: ["Oil & Gas", "Automotive", "Consumer Goods"],
-    shipmentTypes: ["Ship", "Air", "Road"],
-    coverage: "Global",   // already valid
-    maxCoverage: { amount: 10000000, currency: "USD" },
-    established: 2001,
-    rating: 4.6,
-    claimSettlementRate: "95%",
-    status: "approved",
-    verified: true,
-    paymentStatus: "completed",
-    submittedBy: {
-      name: "Robert Johnson",
-      email: "r.johnson@transatlantic.com",
-      phone: "+15550199100",   // FIXED (made 11 digits to meet minLength)
-      designation: "VP Business Development"
-    },
-    description: "Global leader in transatlantic cargo insurance with specialized oil & gas coverage.",
-    licenseNumber: "US-TRANS-2001-789"
-  },
-  {
-    name: "Silk Road Insurance Group",
-    email: "service@silkroadins.com",
-    website: "https://silkroadins.com",
-    contact: "+862162345678",   // FIXED
-    routes: ["Shanghai-Hamburg", "Beijing-London", "Guangzhou-Rotterdam"],
-    cargoTypes: ["Electronics", "Textiles", "Machinery", "Consumer Goods"],
-    shipmentTypes: ["Rail", "Road", "Ship"],
-    coverage: "Asia",   // FIXED (instead of China-Europe)
-    maxCoverage: { amount: 7000000, currency: "USD" },
-    established: 2010,
-    rating: 4.4,
-    claimSettlementRate: "90%",
-    status: "pending",
-    verified: false,
-    paymentStatus: "completed",
-    submittedBy: {
-      name: "Li Wei",
-      email: "l.wei@silkroadins.com",
-      phone: "+862162345678",   // FIXED
-      designation: "International Business Director"
-    },
-    description: "Specialized in Belt and Road Initiative cargo insurance with extensive rail network coverage.",
-    licenseNumber: "CN-SILK-2010-234"
-  }
-];
-
-
-// Seed functions
-const seedAdmins = async () => {
-  try {
-    await Admin.deleteMany({});
-    console.log('Existing admin data cleared');
-    
-    for (const admin of adminData) {
-      const newAdmin = new Admin(admin);
-      await newAdmin.save();
-      console.log(`Admin created: ${admin.username} (${admin.role})`);
-    }
-    
-    console.log('Admin seeding completed');
-  } catch (error) {
-    console.error('Error seeding admins:', error);
-  }
-};
-
-const seedCompanies = async () => {
-  try {
-    await Company.deleteMany({});
-    console.log('Existing company data cleared');
-    
-    const admin = await Admin.findOne({ role: 'super_admin' });
-
-    // Helper: normalize phone numbers to match schema regex (optional leading +, digits only)
-    const normalizePhone = (phone) => {
-      if (!phone) return phone;
-      // Preserve leading + if present, then strip all non-digit characters
-      const hasPlus = phone.trim().startsWith('+');
-      const digits = phone.replace(/[^0-9]/g, '');
-      return hasPlus ? `+${digits}` : digits;
-    };
-
-    // Allowed coverage values in Company schema
-    const allowedCoverages = ['Local', 'Regional', 'National', 'International', 'Global'];
-    
-    for (const company of companyData) {
-      // sanitize phone fields
-      if (company.contact) company.contact = normalizePhone(String(company.contact));
-      if (company.submittedBy && company.submittedBy.phone) company.submittedBy.phone = normalizePhone(String(company.submittedBy.phone));
-
-      // Ensure coverage is one of the allowed enum values; default to 'International' when uncertain
-      if (!allowedCoverages.includes(company.coverage)) {
-        company.coverage = 'International';
-      }
-      if (company.status === 'approved') {
-        company.approvedBy = admin._id;
-        company.approvedAt = new Date();
-      }
-      
-      const newCompany = new Company(company);
-      await newCompany.save();
-      console.log(`Company created: ${company.name} (${company.status})`);
-    }
-    
-    console.log('Company seeding completed');
-  } catch (error) {
-    console.error('Error seeding companies:', error);
-  }
-};
-
-const seedPaymentLogs = async () => {
-  try {
-    await PaymentLog.deleteMany({});
-    console.log('Existing payment data cleared');
-    
-    const companies = await Company.find({ paymentStatus: 'completed' });
-    
-    for (const company of companies) {
-      const paymentLog = new PaymentLog({
-        companyId: company._id,
-        paymentId: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        gatewayOrderId: `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        amount: 1500000, // ₹15,000 in paisa
-        currency: 'INR',
-        status: 'paid',
-        paymentMethod: ['card', 'upi', 'netbanking'][Math.floor(Math.random() * 3)],
-        paidAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
-        customerInfo: {
-          email: company.submittedBy.email,
-          phone: (company.submittedBy && company.submittedBy.phone) ? company.submittedBy.phone : undefined,
-          name: company.submittedBy.name
-        },
-        settled: true,
-        settledAt: new Date(),
-        reconciled: true,
-        reconciledAt: new Date()
-      });
-      
-      await paymentLog.save();
-      console.log(`Payment log created for: ${company.name}`);
-    }
-    
-    console.log('Payment logs seeding completed');
-  } catch (error) {
-    console.error('Error seeding payment logs:', error);
-  }
-};
-
-// Main seeding function
 const seedDatabase = async () => {
-  console.log('🌱 Starting database seeding...');
-  console.log('==========================================');
-  
   try {
     await connectDB();
+
+    // Clear existing data
+    console.log('Clearing existing data...');
+    await User.deleteMany({});
+    await Company.deleteMany({});
+    await Shipment.deleteMany({});
+    await Policy.deleteMany({});
+
+    // Create Admin User
+    console.log('Creating admin user...');
+    const admin = await User.create({
+      username: 'admin',
+      email: process.env.ADMIN_DEFAULT_EMAIL || 'admin@shipment.com',
+      passwordHash: process.env.ADMIN_DEFAULT_PASS || 'Admin@123',
+      role: 'admin',
+      isActive: true
+    });
+    console.log(`Admin created: ${admin.email}`);
+
+    // Create Moderator User
+    console.log('Creating moderator user...');
+    const moderator = await User.create({
+      username: 'moderator',
+      email: process.env.MODERATOR_DEFAULT_EMAIL || 'mod@shipment.com',
+      passwordHash: process.env.MODERATOR_DEFAULT_PASS || 'Mod@123',
+      role: 'moderator',
+      isActive: true
+    });
+    console.log(`Moderator created: ${moderator.email}`);
+
+    // Create Demo User
+    console.log('Creating demo user...');
+    const demoUser = await User.create({
+      username: 'demouser',
+      email: 'demo@example.com',
+      passwordHash: 'Demo@123',
+      role: 'user',
+      isActive: true
+    });
+    console.log(`Demo user created: ${demoUser.email}`);
+
+    // Create Demo Companies
+    console.log('Creating demo companies...');
     
-    // Seed in order
-    await seedAdmins();
-    console.log('');
-    
-    await seedCompanies();
-    console.log('');
-    
-    await seedPaymentLogs();
-    console.log('');
-    
-    console.log('==========================================');
-    console.log('✅ Database seeding completed successfully!');
-    console.log('');
-    console.log('Default Admin Credentials:');
-    console.log('Username: admin');
-    console.log('Password: AdminPass123!');
-    console.log('');
-    console.log('Moderator Credentials:');
-    console.log('Username: moderator');
-    console.log('Password: ModeratorPass123!');
-    console.log('');
-    console.log('⚠️  IMPORTANT: Change default passwords in production!');
-    
-  } catch (error) {
-    console.error('❌ Seeding failed:', error);
-  } finally {
-    await mongoose.connection.close();
-    console.log('Database connection closed');
+    const company1 = await Company.create({
+      name: 'SecureCargo Insurance Ltd.',
+      email: 'contact@securecargo.com',
+      website: 'https://www.securecargo.com',
+      contact: '+91-555-1234',
+      description: 'Industry-leading comprehensive coverage with 24/7 claims support',
+      established: 1995,
+      coverage: 'Global',
+      maxCoverageAmount: 50,
+      maxCoverageCurrency: 'USD',
+      routes: ['Mumbai (JNPT) - Singapore Port', 'Chennai - Dubai'],
+      cargoTypes: ['Electronics', 'Machinery', 'Pharmaceuticals'],
+      shipmentTypes: ['Ship', 'Air'],
+      status: 'approved',
+      paymentStatus: 'completed',
+      verified: true,
+      rating: 4.9,
+      claimSettlement: '98%',
+      pricing: '₹2,50,000 - ₹5,00,000',
+      serviceTier: 'Premium Plus',
+      clicks: 150,
+      views: 450,
+      quotes: 75,
+      submittedBy: {
+        name: 'John Doe',
+        email: 'john@securecargo.com',
+        phone: '+91-555-1234',
+        designation: 'Business Manager'
+      },
+      approvedBy: admin._id,
+      approvedAt: new Date()
+    });
+
+    const company2 = await Company.create({
+      name: 'Global Shield Maritime',
+      email: 'info@globalshield.com',
+      website: 'https://www.globalshield.com',
+      contact: '+91-555-2345',
+      description: 'Trusted maritime insurance provider with extensive network coverage',
+      established: 2001,
+      coverage: 'Worldwide',
+      maxCoverageAmount: 35,
+      maxCoverageCurrency: 'USD',
+      routes: ['Mumbai (JNPT) - New York', 'Kolkata - Hamburg'],
+      cargoTypes: ['Textiles', 'Automotive', 'Food Products'],
+      shipmentTypes: ['Ship', 'Rail'],
+      status: 'approved',
+      paymentStatus: 'completed',
+      verified: true,
+      rating: 4.7,
+      claimSettlement: '95%',
+      pricing: '₹2,00,000 - ₹4,50,000',
+      serviceTier: 'Premium',
+      clicks: 120,
+      views: 380,
+      quotes: 60,
+      submittedBy: {
+        name: 'Jane Smith',
+        email: 'jane@globalshield.com',
+        phone: '+91-555-2345',
+        designation: 'Sales Director'
+      },
+      approvedBy: admin._id,
+      approvedAt: new Date()
+    });
+
+    const company3 = await Company.create({
+      name: 'TransitGuard Solutions',
+      email: 'support@transitguard.com',
+      website: 'https://www.transitguard.com',
+      contact: '+91-555-3456',
+      description: 'Regional specialist with competitive rates and fast claim processing',
+      established: 2008,
+      coverage: 'Asia-Pacific',
+      maxCoverageAmount: 25,
+      maxCoverageCurrency: 'USD',
+      routes: ['Mumbai (JNPT) - Singapore Port', 'Chennai - Bangkok'],
+      cargoTypes: ['Electronics', 'Consumer Goods', 'Chemicals'],
+      shipmentTypes: ['Ship', 'Air', 'Road'],
+      status: 'pending',
+      paymentStatus: 'completed',
+      verified: false,
+      rating: 0,
+      claimSettlement: 'N/A',
+      pricing: 'Pending Review',
+      serviceTier: 'Standard',
+      clicks: 0,
+      views: 0,
+      quotes: 0,
+      submittedBy: {
+        name: 'Mike Johnson',
+        email: 'mike@transitguard.com',
+        phone: '+91-555-3456',
+        designation: 'CEO'
+      }
+    });
+
+    console.log(`Company 1 created: ${company1.name}`);
+    console.log(`Company 2 created: ${company2.name}`);
+    console.log(`Company 3 created: ${company3.name}`);
+
+    // Create Demo Shipment
+    console.log('Creating demo shipment...');
+    const shipment = await Shipment.create({
+      type: 'Ship',
+      origin: {
+        country: 'India',
+        port: 'Mumbai (JNPT)'
+      },
+      destination: {
+        country: 'Singapore',
+        port: 'Singapore Port'
+      },
+      companyId: company1._id,
+      cargoType: 'Electronics',
+      cargoDescription: 'Consumer electronics and components',
+      insuredAmount: 500000,
+      currency: 'USD',
+      status: 'in-transit',
+      createdBy: demoUser._id,
+      departureDate: new Date('2025-10-05'),
+      arrivalDate: new Date('2025-10-15')
+    });
+    console.log(`Shipment created: ${shipment.trackingNumber}`);
+
+    // Create Demo Policy
+    console.log('Creating demo policy...');
+    const policy = await Policy.create({
+      shipmentId: shipment._id,
+      userId: demoUser._id,
+      companyId: company1._id,
+      coverageAmount: 500000,
+      premium: 15000,
+      currency: 'USD',
+      startDate: new Date('2025-10-05'),
+      endDate: new Date('2025-10-15'),
+      status: 'active',
+      coverageType: 'comprehensive'
+    });
+    console.log(`Policy created: ${policy.policyNumber}`);
+
+    console.log('\n=================================');
+    console.log('Database seeded successfully!');
+    console.log('=================================\n');
+    console.log('Default Users:');
+    console.log(`Admin: ${admin.email} / ${process.env.ADMIN_DEFAULT_PASS || 'Admin@123'}`);
+    console.log(`Moderator: ${moderator.email} / ${process.env.MODERATOR_DEFAULT_PASS || 'Mod@123'}`);
+    console.log(`Demo User: ${demoUser.email} / Demo@123`);
+    console.log('\nDemo Data:');
+    console.log(`- ${3} Companies`);
+    console.log(`- ${1} Shipment`);
+    console.log(`- ${1} Policy`);
+    console.log('=================================\n');
+
     process.exit(0);
+  } catch (error) {
+    console.error(`Error seeding database: ${error.message}`);
+    process.exit(1);
   }
 };
 
-// Handle command line arguments
-const args = process.argv.slice(2);
-
-if (args.includes('--clear')) {
-  // Clear all data
-  const clearDatabase = async () => {
-    try {
-      await connectDB();
-      await Admin.deleteMany({});
-      await Company.deleteMany({});
-      await PaymentLog.deleteMany({});
-      console.log('✅ Database cleared successfully');
-    } catch (error) {
-      console.error('❌ Error clearing database:', error);
-    } finally {
-      await mongoose.connection.close();
-      process.exit(0);
-    }
-  };
-  clearDatabase();
-} else if (args.includes('--admins-only')) {
-  // Seed only admins
-  const seedAdminsOnly = async () => {
-    try {
-      await connectDB();
-      await seedAdmins();
-      console.log('✅ Admin seeding completed');
-    } catch (error) {
-      console.error('❌ Admin seeding failed:', error);
-    } finally {
-      await mongoose.connection.close();
-      process.exit(0);
-    }
-  };
-  seedAdminsOnly();
-} else if (args.includes('--companies-only')) {
-  // Seed only companies
-  const seedCompaniesOnly = async () => {
-    try {
-      await connectDB();
-      await seedCompanies();
-      console.log('✅ Company seeding completed');
-    } catch (error) {
-      console.error('❌ Company seeding failed:', error);
-    } finally {
-      await mongoose.connection.close();
-      process.exit(0);
-    }
-  };
-  seedCompaniesOnly();
-} else {
-  // Run full seeding
-  seedDatabase();
-}
-
-module.exports = {
-  seedDatabase,
-  seedAdmins,
-  seedCompanies,
-  seedPaymentLogs
-};
+seedDatabase();

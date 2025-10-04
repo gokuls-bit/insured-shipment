@@ -264,13 +264,13 @@ logger.child = (context) => {
 
 // Graceful shutdown handler
 process.on('SIGINT', () => {
-  logger.info('SIGINT received, closing logger...');
-  logger.end();
+  logger.info('SIGINT received, shutting down...');
+  process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  logger.info('SIGTERM received, closing logger...');
-  logger.end();
+  logger.info('SIGTERM received, shutting down...');
+  process.exit(0);
 });
 
 module.exports = logger;

@@ -1,145 +1,259 @@
-# SurakshitSafar Backend API
+# 🚀 Quick Start Guide - SurakshitSafar Backend
 
-A comprehensive MERN stack backend for the SurakshitSafar cargo insurance portal, connecting shipping companies with insurance providers through advanced route-based matching and secure payment processing.
+## Prerequisites Check
 
-## 🚀 Features
+Before starting, ensure you have:
+- ✅ Node.js v16+ (`node --version`)
+- ✅ MongoDB v5+ (`mongod --version`)
+- ✅ Redis v6+ (`redis-cli --version`)
+- ✅ npm or yarn (`npm --version`)
 
-### Core Functionality
-- **Advanced Company Search**: Route-based filtering with departure/arrival ports
-- **Cargo Type Matching**: Filter companies by specific cargo types they insure
-- **Secure Payment Processing**: Razorpay integration with webhook support
-- **Admin Dashboard**: Complete company management and analytics system
-- **Real-time Analytics**: Track clicks, views, and quote requests
+## 5-Minute Setup
 
-### Security & Performance
-- JWT-based authentication with role-based permissions
-- Advanced rate limiting with different tiers
-- Comprehensive input validation and sanitization
-- Production-grade error handling and logging
-- MongoDB with optimized indexes and aggregation pipelines
+### Step 1: Project Setup (1 min)
 
-### Business Logic
-- Multi-criteria company filtering (routes, cargo types, ratings)
-- Payment verification and refund management
-- Admin approval workflow for company listings
-- Automated email notifications and audit trails
+```bash
+# Navigate to project directory
+cd shipment-backend
 
-## 📋 Prerequisites
-
-- Node.js >= 16.0.0
-- MongoDB >= 5.0
-- npm >= 8.0.0
-- Razorpay account (for payments)
-
-## 🛠 Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/surakshitsafar/backend.git
-   cd surakshitsafar-backend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env file with your configuration
-   ```
-
-4. **Database Setup**
-   ```bash
-   # Start MongoDB service
-   # Then seed the database
-   npm run seed
-   ```
-
-5. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-## 📁 Project Structure
-
-```
-src/
-├── config/          # Database and app configuration
-├── controllers/     # Request handlers and business logic
-├── middlewares/     # Authentication, validation, error handling
-├── models/          # MongoDB schemas and models
-├── routes/          # API endpoint definitions
-├── utils/           # Utility functions and helpers
-└── logs/            # Application logs (auto-generated)
+# Install dependencies
+npm install
 ```
 
-## 🔧 Environment Variables
+### Step 2: Environment Configuration (1 min)
 
-Key environment variables you need to configure:
+```bash
+# Copy environment template
+cp .env.example .env
 
+# Edit with your settings (use nano, vim, or any editor)
+nano .env
+```
+
+**Minimum Required Settings:**
 ```env
-# Database
-MONGODB_URI=mongodb://localhost:27017/surakshitsafar
-
-# JWT Security
-JWT_SECRET=your_32_character_secret_key
-JWT_EXPIRE=7d
-
-# Razorpay Payment Gateway
-RAZORPAY_KEY_ID=rzp_test_your_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_secret
-COMPANY_LISTING_FEE=1500000
-
-# Admin Credentials (Change in production!)
-DEFAULT_ADMIN_USERNAME=admin
-DEFAULT_ADMIN_PASSWORD=AdminPass123!
-
-# Server Configuration
 NODE_ENV=development
 PORT=5000
-CORS_ORIGINS=http://localhost:3000
+MONGO_URI=mongodb://localhost:27017/shipment_insurance
+REDIS_URL=redis://127.0.0.1:6379
+JWT_SECRET=your_super_secret_jwt_key_12345
+JWT_REFRESH_SECRET=your_super_secret_refresh_key_67890
+CORS_ORIGIN=http://localhost:5173
 ```
 
-## 🌐 API Endpoints
+### Step 3: Start Services (1 min)
 
-### Public Endpoints
-- `GET /api/companies` - Search companies with advanced filtering
-- `POST /api/companies` - Submit new company for listing
-- `POST /api/companies/:id/track` - Track company interactions
-- `GET /api/companies/filter-options` - Get available filter options
+```bash
+# Terminal 1: Start MongoDB
+mongod
 
-### Payment Endpoints
-- `POST /api/payments/create-order` - Create payment order
-- `POST /api/payments/verify` - Verify payment completion
-- `GET /api/payments/:id/status` - Check payment status
-- `POST /api/payments/webhook` - Razorpay webhook handler
+# Terminal 2: Start Redis
+redis-server
 
-### Admin Endpoints (Protected)
-- `POST /api/admin/login` - Admin authentication
-- `GET /api/admin/dashboard` - Dashboard statistics
-- `GET /api/admin/pending-requests` - Pending company approvals
-- `PUT /api/admin/companies/:id/status` - Approve/reject companies
-- `DELETE /api/admin/companies/:id` - Delete company
+# Terminal 3: Seed database
+npm run seed
+```
 
-## 🔍 Advanced Search Features
+### Step 4: Run Backend (1 min)
 
-### Route-Based Filtering
+```bash
+# Development mode with auto-reload
+npm run dev
+
+# Or production mode
+npm start
+```
+
+**✅ Backend is now running on http://localhost:5000**
+
+### Step 5: Test API (1 min)
+
+```bash
+# Test health endpoint
+curl http://localhost:5000/api/v1/health
+
+# Expected response:
+# {"status":"OK","timestamp":"...","services":{...}}
+```
+
+## Default Login Credentials
+
+After running `npm run seed`:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@shipment.com | Admin@123 |
+| Moderator | mod@shipment.com | Mod@123 |
+| User | demo@example.com | Demo@123 |
+
+## Testing with Postman
+
+1. Import `Postman_Collection.json`
+2. Set base_url variable to `http://localhost:5000/api/v1`
+3. Run "Login" request with admin credentials
+4. Token will auto-save for authenticated requests
+
+## Connecting React Frontend
+
+In your `App.jsx`, update the API URL:
+
 ```javascript
-GET /api/companies?departurePort=Mumbai&arrivalPort=Singapore
+const API_URL = 'http://localhost:5000/api/v1';
+
+// Example: Login request
+const handleLogin = async (email, password) => {
+  const response = await fetch(`${API_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  
+  const data = await response.json();
+  if (data.success) {
+    localStorage.setItem('accessToken', data.data.accessToken);
+    localStorage.setItem('refreshToken', data.data.refreshToken);
+  }
+};
+
+// Example: Submit claim
+const handleClaimSubmit = async (policyId, description, claimAmount) => {
+  const token = localStorage.getItem('accessToken');
+  
+  const response = await fetch(`${API_URL}/claims`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({ policyId, description, claimAmount })
+  });
+  
+  const data = await response.json();
+  if (data.success) {
+    alert('Claim submitted — see you in future');
+  }
+};
 ```
 
-### Multi-Criteria Search
-```javascript
-GET /api/companies?cargoType=Electronics&shipmentType=Ship&minRating=4.0
+## Common Issues & Solutions
+
+### Issue: MongoDB Connection Error
+```bash
+# Solution: Ensure MongoDB is running
+sudo systemctl start mongod
+# Or on Mac:
+brew services start mongodb-community
 ```
 
-### Pagination and Sorting
-```javascript
-GET /api/companies?page=1&limit=10&sortBy=rating&sortOrder=desc
+### Issue: Redis Connection Error
+```bash
+# Solution: Start Redis server
+redis-server
+# Or on Mac:
+brew services start redis
 ```
 
-## 💳 Payment Integration
+### Issue: Port 5000 Already in Use
+```bash
+# Solution: Change PORT in .env
+PORT=3000
+```
 
-The system integrates with
+### Issue: JWT Token Errors
+```bash
+# Solution: Set proper JWT secrets in .env
+JWT_SECRET=use_a_long_random_string_here
+JWT_REFRESH_SECRET=use_another_long_random_string
+```
+
+## Project Structure Overview
+
+```
+shipment-backend/
+├── server.js              # Entry point
+├── src/
+│   ├── config/           # DB & Redis setup
+│   ├── controllers/      # Business logic
+│   ├── middlewares/      # Auth & validation
+│   ├── models/           # Mongoose schemas
+│   ├── routes/           # API endpoints
+│   ├── scripts/          # seed.js
+│   └── utils/            # Helpers
+├── logs/                 # Winston logs
+└── .env                  # Environment config
+```
+
+## Key API Endpoints
+
+### Public Endpoints (No Auth Required)
+- `POST /api/v1/auth/register` - Register user
+- `POST /api/v1/auth/login` - Login
+- `GET /api/v1/companies` - List companies
+- `POST /api/v1/companies` - Submit company
+
+### Private Endpoints (Auth Required)
+- `GET /api/v1/auth/me` - Get current user
+- `POST /api/v1/claims` - Submit claim
+- `GET /api/v1/policies` - Get policies
+- `GET /api/v1/shipments` - Get shipments
+
+### Admin Endpoints (Admin/Moderator Only)
+- `PUT /api/v1/companies/:id/approve` - Approve company
+- `PUT /api/v1/claims/:id/review` - Review claim
+- `GET /api/v1/admin/dashboard/stats` - Dashboard stats
+
+## Development Tips
+
+### Enable Debug Logging
+```bash
+NODE_ENV=development npm run dev
+```
+
+### Watch Logs in Real-Time
+```bash
+tail -f logs/combined-*.log
+```
+
+### Reset Database
+```bash
+npm run seed
+```
+
+### Test Email Sending
+Use Gmail with App Password:
+1. Enable 2FA on Gmail
+2. Generate App Password
+3. Set SMTP_USER and SMTP_PASS in .env
+
+## Production Checklist
+
+Before deploying to production:
+
+- [ ] Set `NODE_ENV=production`
+- [ ] Use MongoDB Atlas connection string
+- [ ] Set strong JWT secrets (min 32 characters)
+- [ ] Configure production SMTP server
+- [ ] Set proper CORS_ORIGIN
+- [ ] Enable SSL/HTTPS
+- [ ] Set up process manager (PM2)
+- [ ] Configure backup strategy
+- [ ] Set up monitoring (logs)
+
+## Next Steps
+
+1. ✅ Backend is running
+2. 🔄 Test endpoints with Postman
+3. 🎨 Connect React frontend
+4. 📧 Configure email notifications
+5. 🚀 Deploy to production
+
+## Support
+
+- Documentation: See README.md
+- API Testing: Import Postman collection
+- Issues: Check logs/ directory
+- Email: support@surakshitsafar.com
+
+---
+
+**Happy Coding! 🎉**

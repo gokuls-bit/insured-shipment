@@ -1,560 +1,253 @@
-// src/controllers/companyController.js
+// src/controllers/companyController.js - Company Management Controller
 const Company = require('../models/Company');
-const PaymentLog = require('../models/PaymentLog');
-const { validationResult } = require('express-validator');
+const { asyncHandler } = require('../middlewares/errorMiddleware');
+const { successResponse, errorResponse, paginatedResponse } = require('../utils/responseHandler');
+const { cacheGet, cacheSet, cacheDel, cacheDelPattern } = require('../config/redis');
 const logger = require('../utils/logger');
 
-// Get companies with advanced filtering
-const getCompanies = async (req, res) => {
-  try {
-    const {
-      search,
-      departurePort,
-      arrivalPort,
-      cargoType,
-      shipmentType,
-      coverage,
-      minRating,
-      page = 1,
-      limit = 10,
-      sortBy = 'rating',
-      sortOrder = 'desc'
-    } = req.query;
+// @desc    Create new company
+// @route   POST /api/v1/companies
+// @access  Public
+const createCompany = asyncHandler(async (req, res) => {
+  const {
+    name, email, website, contact, description, established, coverage,
+    maxCoverageAmount, maxCoverageCurrency, routes, cargoTypes, shipmentTypes,
+    submitterName, submitterEmail, submitterPhone, submitterDesignation
+  } = req.body;
 
-    // Build query
-    let query = { 
-      status: 'approved', 
-      paymentStatus: 'completed',
-      verified: true 
-    };
+  // Validation
+  if (!name || !email || !website || !contact || !maxCoverageAmount || !submitterName || !submitterEmail || !submitterPhone) {
+    return errorResponse(res, 'Please provide all required fields', 400);
+  }
 
-    // Text search
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { coverage: { $regex: search, $options: 'i' } }
-      ];
+  // Check if company exists
+  const companyExists = await Company.findOne({ $or: [{ name }, { email }] });
+  if (companyExists) {
+    return errorResponse(res, 'Company already exists with this name or email', 400);
+  }
+
+  // Create company
+  const company = await Company.create({
+    name, email, website, contact, description, established, coverage,
+    maxCoverageAmount, maxCoverageCurrency: maxCoverageCurrency || 'USD',
+    routes: routes || [], cargoTypes: cargoTypes || [], shipmentTypes: shipmentTypes || [],
+    status: 'pending',
+    paymentStatus: 'completed',
+    submittedBy: {
+      name: submitterName,
+      email: submitterEmail,
+      phone: submitterPhone,
+      designation: submitterDesignation || ''
     }
+  });
 
-    // Route-based filtering
-    if (departurePort || arrivalPort) {
-      const routeConditions = [];
-      
-      if (departurePort && arrivalPort) {
-        // Both departure and arrival specified
-        const routePattern = `${departurePort}.*${arrivalPort}`;
-        routeConditions.push({ 
-          routes: { $regex: routePattern, $options: 'i' } 
-        });
-      } else if (departurePort) {
-        // Only departure specified
-        routeConditions.push({ 
-          routes: { $regex: `^${departurePort}`, $options: 'i' } 
-        });
-      } else if (arrivalPort) {
-        // Only arrival specified
-        routeConditions.push({ 
-          routes: { $regex: `${arrivalPort}$`, $options: 'i' } 
-        });
-      }
-      
-      if (routeConditions.length > 0) {
-        query.$and = query.$and || [];
-        query.$and.push({ $or: routeConditions });
-      }
-    }
+  // Invalidate cache
+  await cacheDelPattern('companies:*');
 
-    // Cargo type filter
-    if (cargoType) {
-      query.cargoTypes = { $in: [cargoType] };
-    }
+  logger.info(`New company created: ${company.name} (ID: ${company._id})`);
 
-    // Shipment type filter
-    if (shipmentType) {
-      query.shipmentTypes = { $in: [shipmentType] };
-    }
+  successResponse(res, company, 'Company submitted successfully', 201);
+});
 
-    // Coverage filter
-    if (coverage) {
-      query.coverage = coverage;
-    }
+// @desc    Get all companies with filters
+// @route   GET /api/v1/companies
+// @access  Public
+const getCompanies = asyncHandler(async (req, res) => {
+  const {
+    status, paymentStatus, shipmentType, cargoType, route, search,
+    page = 1, limit = 10, sort = '-createdAt'
+  } = req.query;
 
-    // Rating filter
-    if (minRating) {
-      query.rating = { $gte: parseFloat(minRating) };
-    }
+  // Build cache key
+  const cacheKey = `companies:${JSON.stringify(req.query)}`;
+  
+  // Check cache
+  const cachedData = await cacheGet(cacheKey);
+  if (cachedData) {
+    logger.info('Returning cached companies data');
+    return res.status(200).json(cachedData);
+  }
 
-    // Build sort object
-    const sortObj = {};
-    const validSortFields = ['rating', 'established', 'clickCount', 'createdAt', 'name'];
-    const sortField = validSortFields.includes(sortBy) ? sortBy : 'rating';
-    sortObj[sortField] = sortOrder === 'asc' ? 1 : -1;
+  // Build query
+  const query = {};
 
-    // Add secondary sort by createdAt for consistency
-    if (sortField !== 'createdAt') {
-      sortObj.createdAt = -1;
-    }
+  if (status) query.status = status;
+  if (paymentStatus) query.paymentStatus = paymentStatus;
+  if (shipmentType) query.shipmentTypes = shipmentType;
+  if (cargoType) query.cargoTypes = cargoType;
+  if (route) query.routes = { $regex: route, $options: 'i' };
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { description: { $regex: search, $options: 'i' } }
+    ];
+  }
 
-    // Execute query with pagination
-    const options = {
+  // Execute query with pagination
+  const companies = await Company.find(query)
+    .sort(sort)
+    .limit(limit * 1)
+    .skip((page - 1) * limit)
+    .lean();
+
+  // Get total count
+  const count = await Company.countDocuments(query);
+
+  const response = {
+    success: true,
+    message: 'Companies retrieved successfully',
+    data: companies,
+    pagination: {
       page: parseInt(page),
       limit: parseInt(limit),
-      sort: sortObj,
-      populate: [
-        {
-          path: 'approvedBy',
-          select: 'username email',
-          model: 'Admin'
-        }
-      ]
-    };
+      total: count,
+      pages: Math.ceil(count / limit)
+    }
+  };
 
-    // Use aggregation for complex queries
-    const pipeline = [
-      { $match: query },
-      { $sort: sortObj },
-      { $skip: (parseInt(page) - 1) * parseInt(limit) },
-      { $limit: parseInt(limit) },
-      {
-        $lookup: {
-          from: 'admins',
-          localField: 'approvedBy',
-          foreignField: '_id',
-          as: 'approvedBy',
-          pipeline: [{ $project: { username: 1, email: 1 } }]
-        }
-      },
-      {
-        $unwind: {
-          path: '$approvedBy',
-          preserveNullAndEmptyArrays: true
-        }
-      }
-    ];
+  // Cache the result
+  await cacheSet(cacheKey, response, 600); // 10 minutes
 
-    const [companies, totalCount] = await Promise.all([
-      Company.aggregate(pipeline),
-      Company.countDocuments(query)
-    ]);
+  res.status(200).json(response);
+});
 
-    // Calculate pagination info
-    const totalPages = Math.ceil(totalCount / limit);
-    const hasNext = page < totalPages;
-    const hasPrev = page > 1;
+// @desc    Get company by ID
+// @route   GET /api/v1/companies/:id
+// @access  Public
+const getCompanyById = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.params.id);
 
-    // Log search query for analytics
-    logger.info('Company search performed', {
-      query: req.query,
-      resultCount: companies.length,
-      totalCount,
-      ip: req.ip
-    });
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalCompanies: totalCount,
-        companiesPerPage: parseInt(limit),
-        hasNext,
-        hasPrev
-      },
-      filters: {
-        search,
-        departurePort,
-        arrivalPort,
-        cargoType,
-        shipmentType,
-        coverage,
-        minRating
-      },
-      sorting: {
-        sortBy: sortField,
-        sortOrder
-      }
-    });
-
-  } catch (error) {
-    logger.error('Error in getCompanies:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching companies',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
 
-// Submit new company for approval
-const submitCompany = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation errors',
-        errors: errors.array()
-      });
-    }
+  // Increment views
+  await company.incrementViews();
 
-    const {
-      name,
-      email,
-      website,
-      contact,
-      routes,
-      cargoTypes,
-      shipmentTypes,
-      coverage,
-      maxCoverage,
-      established,
-      description,
-      licenseNumber,
-      headquartersAddress,
-      submitterInfo
-    } = req.body;
+  successResponse(res, company, 'Company retrieved successfully');
+});
 
-    // Check if company with same name and email already exists
-    const existingCompany = await Company.findOne({
-      $or: [
-        { name: { $regex: new RegExp(`^${name}$`, 'i') } },
-        { email: email.toLowerCase() }
-      ]
-    });
+// @desc    Update company
+// @route   PUT /api/v1/companies/:id
+// @access  Private (Admin/Moderator)
+const updateCompany = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.params.id);
 
-    if (existingCompany) {
-      return res.status(409).json({
-        success: false,
-        message: 'A company with this name or email already exists',
-        existingCompany: {
-          name: existingCompany.name,
-          email: existingCompany.email,
-          status: existingCompany.status
-        }
-      });
-    }
-
-    // Create new company
-    const companyData = {
-      name: name.trim(),
-      email: email.toLowerCase(),
-      website,
-      contact,
-      routes: routes || [],
-      cargoTypes: cargoTypes || [],
-      shipmentTypes,
-      coverage: coverage || 'Regional',
-      established,
-      description: description?.trim(),
-      submittedBy: {
-        name: submitterInfo.name,
-        email: submitterInfo.email.toLowerCase(),
-        phone: submitterInfo.phone,
-        designation: submitterInfo.designation || ''
-      },
-      status: 'pending',
-      paymentStatus: 'pending'
-    };
-
-    // Add optional fields if provided
-    if (maxCoverage) {
-      companyData.maxCoverage = maxCoverage;
-    }
-    if (licenseNumber) {
-      companyData.licenseNumber = licenseNumber;
-    }
-    if (headquartersAddress) {
-      companyData.headquartersAddress = headquartersAddress;
-    }
-
-    const company = new Company(companyData);
-    const savedCompany = await company.save();
-
-    logger.info('New company submitted', {
-      companyId: savedCompany._id,
-      name: savedCompany.name,
-      submitterEmail: savedCompany.submittedBy.email
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Company submitted successfully. Please proceed with payment to complete the listing process.',
-      data: {
-        companyId: savedCompany._id,
-        name: savedCompany.name,
-        email: savedCompany.email,
-        status: savedCompany.status,
-        paymentRequired: true,
-        paymentAmount: savedCompany.paymentAmount,
-        submittedAt: savedCompany.submittedAt
-      }
-    });
-
-  } catch (error) {
-    logger.error('Error in submitCompany:', error);
-    
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: 'Company with this information already exists'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error submitting company',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
 
-// Track company click/view for analytics
-const trackCompanyClick = async (req, res) => {
-  try {
-    const { companyId } = req.params;
-    const { action = 'click' } = req.body;
-
-    if (!companyId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid company ID format'
-      });
+  // Update fields
+  Object.keys(req.body).forEach(key => {
+    if (req.body[key] !== undefined) {
+      company[key] = req.body[key];
     }
+  });
 
-    const company = await Company.findById(companyId);
-    
-    if (!company) {
-      return res.status(404).json({
-        success: false,
-        message: 'Company not found'
-      });
-    }
+  await company.save();
 
-    // Update analytics based on action
-    let updateOperation = {};
-    switch (action) {
-      case 'click':
-        updateOperation = { $inc: { clickCount: 1 } };
-        break;
-      case 'view':
-        updateOperation = { $inc: { viewCount: 1 } };
-        break;
-      case 'quote':
-        updateOperation = { $inc: { quoteRequests: 1 } };
-        break;
-      default:
-        updateOperation = { $inc: { clickCount: 1 } };
-    }
+  // Invalidate cache
+  await cacheDelPattern('companies:*');
 
-    await Company.findByIdAndUpdate(companyId, updateOperation);
+  logger.info(`Company updated: ${company.name} by ${req.user.username}`);
 
-    logger.info('Company interaction tracked', {
-      companyId,
-      companyName: company.name,
-      action,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+  successResponse(res, company, 'Company updated successfully');
+});
 
-    res.status(200).json({
-      success: true,
-      message: `${action} tracked successfully`,
-      data: {
-        companyId,
-        action,
-        timestamp: new Date()
-      }
-    });
+// @desc    Approve company
+// @route   PUT /api/v1/companies/:id/approve
+// @access  Private (Admin/Moderator)
+const approveCompany = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.params.id);
 
-  } catch (error) {
-    logger.error('Error in trackCompanyClick:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error tracking company interaction',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
 
-// Get available filter options
-const getFilterOptions = async (req, res) => {
-  try {
-    const [
-      availableRoutes,
-      availableCargoTypes,
-      availableShipmentTypes,
-      coverageTypes
-    ] = await Promise.all([
-      Company.distinct('routes', { status: 'approved', verified: true }),
-      Company.distinct('cargoTypes', { status: 'approved', verified: true }),
-      Company.distinct('shipmentTypes', { status: 'approved', verified: true }),
-      Company.distinct('coverage', { status: 'approved', verified: true })
-    ]);
+  company.status = 'approved';
+  company.verified = true;
+  company.approvedBy = req.user._id;
+  company.approvedAt = new Date();
 
-    // Extract unique departure and arrival ports from routes
-    const departurePorts = new Set();
-    const arrivalPorts = new Set();
-    
-    availableRoutes.forEach(route => {
-      const [departure, arrival] = route.split('-');
-      if (departure?.trim()) departurePorts.add(departure.trim());
-      if (arrival?.trim()) arrivalPorts.add(arrival.trim());
-    });
+  await company.save();
 
-    res.status(200).json({
-      success: true,
-      data: {
-        routes: availableRoutes.sort(),
-        departurePorts: Array.from(departurePorts).sort(),
-        arrivalPorts: Array.from(arrivalPorts).sort(),
-        cargoTypes: availableCargoTypes.sort(),
-        shipmentTypes: availableShipmentTypes.sort(),
-        coverageTypes: coverageTypes.sort(),
-        ratingRange: {
-          min: 0,
-          max: 5,
-          step: 0.1
-        }
-      }
-    });
+  // Invalidate cache
+  await cacheDelPattern('companies:*');
 
-  } catch (error) {
-    logger.error('Error in getFilterOptions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching filter options',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  logger.info(`Company approved: ${company.name} by ${req.user.username}`);
+
+  successResponse(res, company, 'Company approved successfully');
+});
+
+// @desc    Reject company
+// @route   PUT /api/v1/companies/:id/reject
+// @access  Private (Admin/Moderator)
+const rejectCompany = asyncHandler(async (req, res) => {
+  const { rejectionReason } = req.body;
+
+  const company = await Company.findById(req.params.id);
+
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
 
-// Get company statistics
-const getCompanyStats = async (req, res) => {
-  try {
-    const stats = await Company.aggregate([
-      {
-        $facet: {
-          statusStats: [
-            {
-              $group: {
-                _id: '$status',
-                count: { $sum: 1 }
-              }
-            }
-          ],
-          verificationStats: [
-            {
-              $group: {
-                _id: '$verified',
-                count: { $sum: 1 }
-              }
-            }
-          ],
-          coverageStats: [
-            {
-              $group: {
-                _id: '$coverage',
-                count: { $sum: 1 },
-                avgRating: { $avg: '$rating' }
-              }
-            }
-          ],
-          shipmentTypeStats: [
-            { $unwind: '$shipmentTypes' },
-            {
-              $group: {
-                _id: '$shipmentTypes',
-                count: { $sum: 1 }
-              }
-            }
-          ],
-          totalStats: [
-            {
-              $group: {
-                _id: null,
-                totalCompanies: { $sum: 1 },
-                totalClicks: { $sum: '$clickCount' },
-                totalViews: { $sum: '$viewCount' },
-                avgRating: { $avg: '$rating' },
-                totalQuoteRequests: { $sum: '$quoteRequests' }
-              }
-            }
-          ]
-        }
-      }
-    ]);
+  company.status = 'rejected';
+  company.rejectedBy = req.user._id;
+  company.rejectedAt = new Date();
+  company.rejectionReason = rejectionReason || '';
 
-    res.status(200).json({
-      success: true,
-      data: stats[0]
-    });
+  await company.save();
 
-  } catch (error) {
-    logger.error('Error in getCompanyStats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching company statistics',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  // Invalidate cache
+  await cacheDelPattern('companies:*');
+
+  logger.info(`Company rejected: ${company.name} by ${req.user.username}`);
+
+  successResponse(res, company, 'Company rejected successfully');
+});
+
+// @desc    Delete company
+// @route   DELETE /api/v1/companies/:id
+// @access  Private (Admin)
+const deleteCompany = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.params.id);
+
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
 
-// Get company by ID with full details
-const getCompanyById = async (req, res) => {
-  try {
-    const { companyId } = req.params;
+  await company.deleteOne();
 
-    if (!companyId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid company ID format'
-      });
-    }
+  // Invalidate cache
+  await cacheDelPattern('companies:*');
 
-    const company = await Company.findById(companyId)
-      .populate('approvedBy', 'username email')
-      .lean();
+  logger.info(`Company deleted: ${company.name} by ${req.user.username}`);
 
-    if (!company) {
-      return res.status(404).json({
-        success: false,
-        message: 'Company not found'
-      });
-    }
+  successResponse(res, null, 'Company deleted successfully');
+});
 
-    // Only return approved companies to public
-    if (company.status !== 'approved' || !company.verified) {
-      return res.status(404).json({
-        success: false,
-        message: 'Company not found or not yet approved'
-      });
-    }
+// @desc    Track company click
+// @route   POST /api/v1/companies/:id/click
+// @access  Public
+const trackClick = asyncHandler(async (req, res) => {
+  const company = await Company.findById(req.params.id);
 
-    // Increment view count
-    await Company.findByIdAndUpdate(companyId, { $inc: { viewCount: 1 } });
-
-    res.status(200).json({
-      success: true,
-      data: company
-    });
-
-  } catch (error) {
-    logger.error('Error in getCompanyById:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching company details',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
-    });
+  if (!company) {
+    return errorResponse(res, 'Company not found', 404);
   }
-};
+
+  await company.incrementClicks();
+
+  successResponse(res, { clicks: company.clicks }, 'Click tracked');
+});
 
 module.exports = {
+  createCompany,
   getCompanies,
-  submitCompany,
-  trackCompanyClick,
-  getFilterOptions,
-  getCompanyStats,
-  getCompanyById
+  getCompanyById,
+  updateCompany,
+  approveCompany,
+  rejectCompany,
+  deleteCompany,
+  trackClick
 };
