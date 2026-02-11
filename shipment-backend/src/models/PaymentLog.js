@@ -1,4 +1,4 @@
-// src/models/PaymentLog.js
+ // src/models/PaymentLog.js
 const mongoose = require('mongoose');
 
 const PaymentLogSchema = new mongoose.Schema({
