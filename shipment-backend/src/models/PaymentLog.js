@@ -5,7 +5,7 @@ const PaymentLogSchema = new mongoose.Schema({
   // Reference to company
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Company',
+    ref: 'Company', 
     required: [true, 'Company ID is required'],
     index: true
   },
