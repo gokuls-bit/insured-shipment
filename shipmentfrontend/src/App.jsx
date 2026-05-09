@@ -9,10 +9,7 @@ import {
   MoreVertical, Send, User, ShoppingCart, Zap, TrendingDown, ArrowUpRight, ArrowLeft
 } from 'lucide-react';
 
-// ============================================================================
-// DATA CONSTANTS
-// ============================================================================
-
+]
 const API_URL = 'http://localhost:5000/api';
 
 const countryPortData = {
@@ -52,10 +49,7 @@ const shipmentTypes = [
   { value: "Air", icon: Plane, color: "text-purple-600" }
 ];
 
-// ============================================================================
-// MOCK DATA GENERATION
-// ============================================================================
-
+]
 const generateMockCompaniesForRoute = (departure, arrival, cargoType, transportMode) => {
   const yourCompany = {
     id: "your-company-premium",
@@ -125,14 +119,10 @@ const generateMockCompaniesForRoute = (departure, arrival, cargoType, transportM
 };
 
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
+
 
 function SurakshitSafar() {
-  // ----------------------------------------------------------------------------
-  // STATE MANAGEMENT
-  // ----------------------------------------------------------------------------
+ =
   
   // View & Auth State
   const [currentView, setCurrentView] = useState("home");
