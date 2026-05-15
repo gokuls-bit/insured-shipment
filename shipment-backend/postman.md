@@ -3,7 +3,7 @@
     "name": "SurakshitSafar API",
     "description": "Complete API collection for Shipment Insurance Platform",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
+  },  
   "variable": [
     {
       "key": "base_url",
